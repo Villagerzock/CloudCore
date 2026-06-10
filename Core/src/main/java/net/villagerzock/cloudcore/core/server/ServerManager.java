@@ -708,6 +708,7 @@ public class ServerManager {
 
             return output.substring(colonIndex + 1);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Failed to inspect docker port", e);
         }
     }

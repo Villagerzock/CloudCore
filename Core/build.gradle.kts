@@ -40,10 +40,10 @@ val generatedResourcesDir = layout.buildDirectory.dir("generated/resources")
 val embeddedDir = generatedResourcesDir.map { it.dir("embedded") }
 
 val copyVelocityPluginJar by tasks.registering(Copy::class) {
-    dependsOn(":Velocity:jar")
+    dependsOn(":Velocity:shadowJar")
 
     from(project(":Velocity").layout.buildDirectory.dir("libs")) {
-        include("*.jar")
+        include("*-all.jar")
         exclude("*-sources.jar")
         exclude("*-javadoc.jar")
         rename { "CloudCore-Velocity.jar" }

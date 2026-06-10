@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "4.0.6"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.gradleup.shadow") version "9.0.0"
 }
 
 group = "net.villagerzock"
@@ -45,4 +46,13 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+
+tasks.shadowJar {
+    archiveClassifier.set("all")
+
+    mergeServiceFiles()
+
+    append("META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports")
 }
