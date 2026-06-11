@@ -16,7 +16,7 @@ import java.util.Map;
 public class VersionHelper {
     public static Map<String, Map<String, String>> loadServerVersionMap() {
         try {
-            System.out.println("Loading server versions from PaperMC and Fabric...");
+            System.out.println("Loading server versions from PaperMC, Fabric and Vanilla...");
 
             HttpClient client = HttpClient.newHttpClient();
             Gson gson = new Gson();
@@ -153,6 +153,64 @@ public class VersionHelper {
             }
 
             result.put("fabric", sortVersionsDescending(fabricVersions));
+
+            System.out.println("Loading vanilla versions...");
+
+            Map<String, String> vanillaVersions = new HashMap<>();
+
+            JsonObject vanillaManifest = gson.fromJson(
+                    client.send(
+                            HttpRequest.newBuilder()
+                                    .uri(URI.create("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString()
+                    ).body(),
+                    JsonObject.class
+            );
+
+            for (JsonElement element : vanillaManifest.getAsJsonArray("versions")) {
+                JsonObject versionInfo = element.getAsJsonObject();
+
+                if (!versionInfo.get("type").getAsString().equals("release")) {
+                    continue;
+                }
+
+                String version = versionInfo.get("id").getAsString();
+
+                if (isSnapshotVersion(version)) {
+                    continue;
+                }
+
+                JsonObject versionJson = gson.fromJson(
+                        client.send(
+                                HttpRequest.newBuilder()
+                                        .uri(URI.create(versionInfo.get("url").getAsString()))
+                                        .build(),
+                                HttpResponse.BodyHandlers.ofString()
+                        ).body(),
+                        JsonObject.class
+                );
+
+                JsonObject downloads = versionJson.getAsJsonObject("downloads");
+
+                if (downloads == null || !downloads.has("server")) {
+                    continue;
+                }
+
+                JsonObject serverDownload = downloads.getAsJsonObject("server");
+
+                if (serverDownload == null || !serverDownload.has("url")) {
+                    continue;
+                }
+
+                vanillaVersions.put(
+                        version,
+                        serverDownload.get("url").getAsString()
+                );
+            }
+
+            result.put("vanilla", sortVersionsDescending(vanillaVersions));
+
             System.out.println("Loaded server versions.");
             return result;
         } catch (Exception e) {

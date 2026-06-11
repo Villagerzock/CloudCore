@@ -24,13 +24,14 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-restclient")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     compileOnly("org.projectlombok:lombok")
-    runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     annotationProcessor("org.projectlombok:lombok")
+    implementation("org.mariadb.jdbc:mariadb-java-client")
+
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jdbc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
@@ -48,11 +49,20 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-
+configurations.all {
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+    exclude(group = "ch.qos.logback", module = "logback-classic")
+    exclude(group = "ch.qos.logback", module = "logback-core")
+}
 tasks.shadowJar {
     archiveClassifier.set("all")
 
     mergeServiceFiles()
 
     append("META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports")
+    append("META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.replacements")
+
+    append("META-INF/spring.factories")
+    append("META-INF/spring/aot.factories")
+    append("META-INF/spring.components")
 }

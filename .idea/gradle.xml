@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -10,8 +9,8 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/Api" />
-            <option value="$PROJECT_DIR$/Velocity" />
             <option value="$PROJECT_DIR$/Core" />
+            <option value="$PROJECT_DIR$/Velocity" />
           </set>
         </option>
       </GradleProjectSettings>

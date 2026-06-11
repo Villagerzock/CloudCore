@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     id("java")
     id("com.gradleup.shadow") version "9.0.0"
@@ -20,6 +22,8 @@ dependencies {
     implementation("org.jline:jline-console-ui:3.30.0")
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.yaml:snakeyaml:2.5")
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
 }
 
 tasks.test {
@@ -44,8 +48,6 @@ val copyVelocityPluginJar by tasks.registering(Copy::class) {
 
     from(project(":Velocity").layout.buildDirectory.dir("libs")) {
         include("*-all.jar")
-        exclude("*-sources.jar")
-        exclude("*-javadoc.jar")
         rename { "CloudCore-Velocity.jar" }
     }
 

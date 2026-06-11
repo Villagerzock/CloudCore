@@ -1,0 +1,21 @@
+{
+  "name": "bots",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bots.ts",
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mineflayer": "^4.37.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
