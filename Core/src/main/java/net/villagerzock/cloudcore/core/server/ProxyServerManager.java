@@ -1,6 +1,7 @@
 package net.villagerzock.cloudcore.core.server;
 
 import com.google.gson.Gson;
+import net.villagerzock.cloudcore.core.server.dto.CallbackDto;
 import net.villagerzock.cloudcore.core.server.dto.LobbyDataDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerCreationDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerShutdownDto;
@@ -9,6 +10,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
+import java.util.UUID;
 
 public class ProxyServerManager {
     private static final ProxyServerManager INSTANCE = new ProxyServerManager();
@@ -71,7 +74,11 @@ public class ProxyServerManager {
         this.port = port;
     }
 
-    static ProxyServerManager getInstance(){
+    public static ProxyServerManager getInstance(){
         return INSTANCE;
+    }
+
+    public void callback(UUID uuid, Map<String, Object> data) {
+        send("POST", "/api/callback", GSON.toJson(new CallbackDto(uuid,data)));
     }
 }

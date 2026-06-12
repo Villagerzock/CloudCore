@@ -10,6 +10,7 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -24,6 +25,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.5")
     compileOnly("org.projectlombok:lombok:1.18.38")
     annotationProcessor("org.projectlombok:lombok:1.18.38")
+    implementation("com.github.Querz:NBT:6.1")
 }
 
 tasks.test {

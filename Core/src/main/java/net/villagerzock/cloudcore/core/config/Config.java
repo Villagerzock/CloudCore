@@ -32,6 +32,30 @@ public class Config {
     @Getter
     public LobbyConfig lobby = new LobbyConfig();
 
+    public void save() {
+        Path path = ServerManager.BASE_DIR.resolve("config.yml");
+        DumperOptions options = new DumperOptions();
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+
+        Representer representer = new NoClassTagRepresenter(options);
+
+        Yaml yaml = new Yaml(representer,options);
+        try {
+            Files.createDirectories(path.getParent());
+            instance = new Config();
+            instance.mariadb = launchDatabaseConfigWizard();
+
+
+            try (Writer writer = Files.newBufferedWriter(path)) {
+                yaml.dump(instance, writer);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+
+    }
+
     public static class MariaDb {
         @Getter
         public int port = 3306;
@@ -55,7 +79,7 @@ public class Config {
         }
 
         @Getter
-        public String server;
+        public String server = null;
 
         @Getter
         public Mode mode = Mode.STATIC;
@@ -67,7 +91,7 @@ public class Config {
         public Integer to = null;
 
         @Getter
-        public Integer amount = 0;
+        public Integer amount = 1;
     }
 
 

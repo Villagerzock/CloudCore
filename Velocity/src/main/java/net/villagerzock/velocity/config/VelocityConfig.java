@@ -13,6 +13,11 @@ public class VelocityConfig {
     public LobbyConfiguration lobbyConfiguration(){
         return CloudCoreVelocityPlugin.lobbyConfiguration;
     }
+
+    @Bean
+    public MatchmakingConfiguration matchmakingConfiguration(){
+        return CloudCoreVelocityPlugin.matchmakingConfiguration;
+    }
     @Bean
     public ProxyServer proxyServer(){
         return CloudCoreVelocityPlugin.INSTANCE.proxy;

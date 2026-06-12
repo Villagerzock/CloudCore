@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.villagerzock.velocity.config.LobbyConfiguration;
+import net.villagerzock.velocity.dto.LobbyResponseDto;
 import net.villagerzock.velocity.dto.LobbySettingsDto;
 import net.villagerzock.velocity.dto.ServerCreationDto;
 import net.villagerzock.velocity.dto.ServerShutdownDto;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.swing.text.html.Option;
 import java.net.InetSocketAddress;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/server")
@@ -69,4 +70,51 @@ public class ServerController {
         lobbyConfiguration.setServer(lobbySettingsDto.server());
         return ResponseEntity.ok("Updated");
     }
+
+    @GetMapping("/lobby")
+    public ResponseEntity<LobbyResponseDto> getLobbyServers(){
+        Map<String, String> unformattedServers = serverMangementService.getServers();
+
+        List<String> servers = new ArrayList<>();
+
+        for (String server : unformattedServers.keySet()) {
+            if (unformattedServers.get(server).equals(lobbyConfiguration.getServer())) {
+                servers.add(server);
+            }
+        }
+
+        return ResponseEntity.ok(new LobbyResponseDto(lobbyConfiguration.getServer(),servers));
+    }
+
+
+    @GetMapping("/")
+    public ResponseEntity<?> getServers(
+            @RequestParam(required = false) String type
+    ) {
+        Map<String, String> unformattedServers = serverMangementService.getServers();
+
+        if (type != null) {
+            List<String> servers = new ArrayList<>();
+
+            for (String server : unformattedServers.keySet()) {
+                if (unformattedServers.get(server).equals(type)) {
+                    servers.add(server);
+                }
+            }
+
+            return ResponseEntity.ok(servers);
+        }
+
+        Map<String, List<String>> servers = new HashMap<>();
+
+        for (String server : unformattedServers.keySet()) {
+            servers.computeIfAbsent(
+                    unformattedServers.get(server),
+                    k -> new ArrayList<>()
+            ).add(server);
+        }
+
+        return ResponseEntity.ok(servers);
+    }
+
 }

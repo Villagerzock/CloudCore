@@ -9,6 +9,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.villagerzock.velocity.config.LobbyConfiguration;
+import net.villagerzock.velocity.config.MatchmakingConfiguration;
 import net.villagerzock.velocity.service.ServerMangementService;
 import org.slf4j.Logger;
 import org.springframework.boot.SpringApplication;
@@ -30,6 +31,7 @@ public class CloudCoreVelocityPlugin {
 
     public static CloudCoreVelocityPlugin INSTANCE;
     public static LobbyConfiguration lobbyConfiguration = new LobbyConfiguration();
+    public static MatchmakingConfiguration matchmakingConfiguration = new MatchmakingConfiguration();
     public final ProxyServer proxy;
     private final Logger logger;
     private ConfigurableApplicationContext application;

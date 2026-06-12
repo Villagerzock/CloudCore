@@ -1,7 +1,10 @@
 package net.villagerzock.cloudcore.core.server;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.villagerzock.cloudcore.core.Main;
 import net.villagerzock.cloudcore.core.config.Config;
+import net.villagerzock.cloudcore.core.config.NoClassTagRepresenter;
 import org.jline.consoleui.elements.ConfirmChoice;
 import org.jline.consoleui.prompt.*;
 import org.jline.consoleui.prompt.builder.ListPromptBuilder;
@@ -12,7 +15,10 @@ import org.jline.utils.AttributedString;
 import org.jline.utils.Display;
 import org.jline.utils.NonBlockingReader;
 import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.*;
 import java.net.URI;
@@ -179,11 +185,15 @@ enable-player-address-logging = %s
 
     public static void init() {
         ensureDockerNetwork();
-        scanForRunningProxy();
+        scanForRunningProxy(true);
         scanForRunningServers();
         Config.LobbyConfig lobbyConfig = Config.getInstance().getLobby();
         if (!Files.exists(BASE_DIR.resolve("templates").resolve(lobbyConfig.server))){
-            launchCreationWizard(lobbyConfig.server);
+            String server = launchCreationWizard(lobbyConfig.server);
+            if (lobbyConfig.server == null){
+                lobbyConfig.server = server;
+                Config.getInstance().save();
+            }
         }
         if (!WAIT_FOR_SPRING_START.isDone()){
             System.out.println("Waiting for Velocity");
@@ -205,11 +215,15 @@ enable-player-address-logging = %s
                 alreadyThere++;
             }
         }
+        System.out.printf("Need to Start %d more Servers.%n", initialAmount-alreadyThere);
         if (initialAmount-alreadyThere > 0){
             for (int i = 0; i<initialAmount-alreadyThere; i++){
                 try {
-                    launchServer(lobbyConfig.getServer(),false).get();
+                    ServerLaunchResult result = launchServer(lobbyConfig.getServer(),false).get();
+                    System.out.println(result.message);
                 } catch (InterruptedException | ExecutionException e) {
+                    System.out.println("Failed to launch lobby server:");
+                    e.printStackTrace();
                     throw new RuntimeException(e);
                 }
             }
@@ -292,7 +306,7 @@ enable-player-address-logging = %s
 
                 setupVelocityProxy(proxyPort, memory, velocityVersion);
                 Thread.sleep(1000);
-                scanForRunningProxy();
+                scanForRunningProxy(false);
                 return;
             }
 
@@ -328,7 +342,7 @@ enable-player-address-logging = %s
 
             setupVelocityProxy(proxyPort, memory, velocityVersion);
             Thread.sleep(1000);
-            scanForRunningProxy();
+            scanForRunningProxy(false);
         } catch (Exception e) {
             throw new RuntimeException("Failed to launch proxy wizard", e);
         }
@@ -497,7 +511,7 @@ enable-player-address-logging = %s
         } catch (Exception ignored) {
         }
     }
-    private static void scanForRunningProxy() {
+    private static void scanForRunningProxy(boolean skipWait) {
         try {
             Process process = new ProcessBuilder(
                     "docker",
@@ -527,7 +541,7 @@ enable-player-address-logging = %s
                 RUNNING_PROXY = null;
                 launchProxyWizard();
                 return;
-            }else {
+            }else if (skipWait){
                 WAIT_FOR_SPRING_START.complete(null);
             }
 
@@ -570,16 +584,22 @@ enable-player-address-logging = %s
     private static final Map<String, Integer> INSTANCE_COUNTERS = new HashMap<>();
     private static final Map<String, RunningServer> RUNNING_SERVERS = new HashMap<>();
 
-    public static void createServer(ServerType serverType, String url, String name) {
+    public static String createServer(ServerType serverType, String url, String name, String memory, String worldType, String superflatType, String seed) {
         try {
             Path serverDir = TEMPLATES_DIR.resolve(name);
 
             Files.createDirectories(serverDir);
 
-            Yaml yaml = new Yaml();
+            DumperOptions options = new DumperOptions();
+            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 
-            Map<String, Object> cloudCoreConfig = new LinkedHashMap<>();
-            cloudCoreConfig.put("serverType", serverType.name());
+            Representer representer = new NoClassTagRepresenter(options);
+
+            Yaml yaml = new Yaml(representer,options);
+
+            ServerConfig cloudCoreConfig = new ServerConfig();
+            cloudCoreConfig.type = serverType;
+            cloudCoreConfig.memory = parseMemory(memory);
 
             try (Writer writer = Files.newBufferedWriter(
                     serverDir.resolve(".cloudcore.conf"),
@@ -634,10 +654,47 @@ enable-player-address-logging = %s
                 );
             }
 
+            WorldType.valueOf(worldType.toUpperCase(Locale.ROOT)).create(serverDir.resolve("world"),superflatType,seed);
+
             System.out.println("Created server template at: " + serverDir.toAbsolutePath());
+
+            return name;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create server template", e);
         }
+    }
+
+    public static long parseMemory(String memory) {
+        if (memory == null || memory.isBlank()) {
+            throw new IllegalArgumentException("Memory must not be empty");
+        }
+
+        memory = memory.trim().toUpperCase(Locale.ROOT);
+
+        long multiplier = 1;
+
+        if (memory.endsWith("K")) {
+            multiplier = 1024L;
+            memory = memory.substring(0, memory.length() - 1);
+        } else if (memory.endsWith("M")) {
+            multiplier = 1024L * 1024L;
+            memory = memory.substring(0, memory.length() - 1);
+        } else if (memory.endsWith("G")) {
+            multiplier = 1024L * 1024L * 1024L;
+            memory = memory.substring(0, memory.length() - 1);
+        }
+
+        return Long.parseLong(memory) * multiplier;
+    }
+
+    public static class ServerConfig{
+        @Getter
+        @Setter
+        public ServerType type;
+
+        @Getter
+        @Setter
+        public long memory;
     }
 
     public static CompletableFuture<ServerLaunchResult> launchServer(String name, boolean singleton) {
@@ -655,13 +712,14 @@ enable-player-address-logging = %s
                 }
 
                 if (!Files.exists(serverDir.resolve("server.jar"))) {
-                    return new ServerLaunchResult(ServerState.FAILED, "server.jar not found in " + serverDir, null);
+                    return new ServerLaunchResult(ServerState.FAILED, "server.jar not found in " + serverDir, null,CompletableFuture.failedFuture(new IllegalStateException("server.jar not found in " + serverDir)));
                 }
 
                 Path secretPath = BASE_DIR.resolve("proxy/server/forwarding.secret");
                 String secret = Files.readString(secretPath).trim();
 
-                readServerType(serverDir).setupForVelocity(serverDir,secret);
+                ServerConfig config = readServerConfig(serverDir);
+                config.type.setupForVelocity(serverDir,secret);
 
                 String containerName = sanitizeDockerName(instanceName);
 
@@ -678,6 +736,8 @@ enable-player-address-logging = %s
                         "/server",
                         "eclipse-temurin:21",
                         "java",
+                        "-Xms" + config.memory,
+                        "-Xmx" + config.memory,
                         "-jar",
                         "server.jar",
                         "nogui"
@@ -695,7 +755,7 @@ enable-player-address-logging = %s
                 int exitCode = runProcess.waitFor();
 
                 if (exitCode != 0) {
-                    return new ServerLaunchResult(ServerState.FAILED, "Docker failed", null);
+                    return new ServerLaunchResult(ServerState.FAILED, "Docker failed", null, CompletableFuture.failedFuture(new IllegalStateException("Docker failed")));
                 }
 
                 String port = getDockerPort(containerId);
@@ -716,17 +776,19 @@ enable-player-address-logging = %s
                     ServerState state = getDockerState(containerId);
 
                     if (state == ServerState.RUNNING) {
-                        ProxyServerManager.getInstance().register(
+
+                        CompletableFuture<RunningServer> future = registerServerWhenStarted(
                                 runningServer.name(),
                                 runningServer.templateName(),
                                 runningServer.containerName(),
-                                25565
+                                runningServer
                         );
 
                         return new ServerLaunchResult(
                                 ServerState.RUNNING,
                                 "Started Successfully on port " + port,
-                                runningServer
+                                runningServer,
+                                future
                         );
                     }
 
@@ -734,7 +796,8 @@ enable-player-address-logging = %s
                         return new ServerLaunchResult(
                                 ServerState.CRASHED,
                                 "Crashed :(",
-                                runningServer
+                                runningServer,
+                                CompletableFuture.failedFuture(new IllegalStateException("Crashed :("))
                         );
                     }
 
@@ -744,33 +807,61 @@ enable-player-address-logging = %s
                 return new ServerLaunchResult(
                         ServerState.TIMEOUT,
                         "Startup Timeout",
-                        runningServer
+                        runningServer,
+                        CompletableFuture.failedFuture(new IllegalStateException("Startup Timeout"))
                 );
             } catch (Exception e) {
                 return new ServerLaunchResult(
                         ServerState.FAILED,
                         "Failed: " + e.getMessage(),
-                        null
+                        null,
+                        CompletableFuture.failedFuture(e)
                 );
             }
         });
     }
 
-    private static ServerType readServerType(Path serverDir) {
+    private static CompletableFuture<RunningServer> registerServerWhenStarted(String name, String base, String host, RunningServer runningServer) {
+        return CompletableFuture.supplyAsync(() -> {
+            ProxyServerManager.getInstance().register(name, base, host, 25565);
+
+            long timeoutAt = System.currentTimeMillis() + 120_000;
+
+            while (System.currentTimeMillis() < timeoutAt) {
+                if (runningServer.isCrashed()) {
+                    throw new IllegalStateException("Server crashed while starting: " + name);
+                }
+
+                if (!runningServer.isRunning()) {
+                    throw new IllegalStateException("Server stopped while starting: " + name);
+                }
+
+                if (runningServer.isReady()) {
+                    return runningServer;
+                }
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for server start: " + name, e);
+                }
+            }
+
+            throw new IllegalStateException("Server did not become ready in time: " + name);
+        });
+    }
+
+    private static ServerConfig readServerConfig(Path serverDir) {
         try {
             Yaml yaml = new Yaml();
 
-            try (InputStream in = Files.newInputStream(
-                    serverDir.resolve(".cloudcore.conf")
-            )) {
-                Map<String, Object> config = yaml.load(in);
-
-                return ServerType.valueOf(
-                        String.valueOf(config.get("serverType"))
-                );
+            try (InputStream in = Files.newInputStream(serverDir.resolve(".cloudcore.conf"))) {
+                return yaml.loadAs(in, ServerConfig.class);
             }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to read server type", e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to read server config", e);
         }
     }
 
@@ -834,7 +925,8 @@ enable-player-address-logging = %s
     public record ServerLaunchResult(
             ServerState state,
             String message,
-            RunningServer server
+            RunningServer server,
+            CompletableFuture<RunningServer> started
     ) {
     }
 
@@ -1074,6 +1166,61 @@ enable-player-address-logging = %s
             Path serverDir,
             String port
     ) {
+        public boolean isCrashed() {
+            try {
+                Process process = new ProcessBuilder(
+                        "docker",
+                        "inspect",
+                        "-f",
+                        "{{.State.ExitCode}}",
+                        containerId
+                ).start();
+
+                String result = new String(process.getInputStream().readAllBytes()).trim();
+
+                if (result.isBlank()) {
+                    return false;
+                }
+
+                return Integer.parseInt(result) != 0;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        public boolean isRunning() {
+            try {
+                Process process = new ProcessBuilder(
+                        "docker",
+                        "inspect",
+                        "-f",
+                        "{{.State.Running}}",
+                        containerId
+                ).start();
+
+                String result = new String(process.getInputStream().readAllBytes()).trim();
+
+                return Boolean.parseBoolean(result);
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        public boolean isReady() {
+            try {
+                Process process = new ProcessBuilder(
+                        "docker",
+                        "logs",
+                        containerId
+                ).start();
+
+                String logs = new String(process.getInputStream().readAllBytes());
+
+                return logs.contains("Done (");
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }
 
 
@@ -1279,19 +1426,19 @@ enable-player-address-logging = %s
         }
     }
 
-    public static void launchCreationWizard(String initialName) {
+    public static String launchCreationWizard(String initialName) {
         try {
 
             ConsolePrompt prompt = new ConsolePrompt(terminal);
 
             PromptBuilder builder = prompt.getPromptBuilder();
 
-            if (initialName == null){
+            if (initialName == null) {
                 builder.createInputPrompt()
                         .name("name")
                         .message("How do you want to call the Server?")
                         .addPrompt();
-            }else {
+            } else {
                 builder.createText()
                         .addLine("Name is: " + initialName)
                         .addPrompt();
@@ -1305,10 +1452,60 @@ enable-player-address-logging = %s
                     .newItem("vanilla").text("Vanilla (Unsafe)").add()
                     .addPrompt();
 
+            builder.createInputPrompt()
+                    .name("memory")
+                    .message("How much memory should the server use? Example: 1G / 2048M")
+                    .defaultValue("1G")
+                    .addPrompt();
+
+            builder.createListPrompt()
+                    .name("worldType")
+                    .message("What world type?")
+                    .newItem("default").text("Default").add()
+                    .newItem("superflat").text("Superflat").add()
+                    .newItem("large_biomes").text("Large Biomes").add()
+                    .newItem("amplified").text("Amplified").add()
+                    .addPrompt();
+
+            builder.createInputPrompt()
+                    .name("seed")
+                    .message("World seed, leave empty for random")
+                    .addPrompt();
+
             Map<String, ? extends PromptResultItemIF> result = prompt.prompt(builder.build());
 
             ListResult serverType = (ListResult) result.get("serverType");
-            InputResult name = (InputResult) result.get("name");
+            InputResult name = initialName == null ? (InputResult) result.get("name") : null;
+            InputResult memory = (InputResult) result.get("memory");
+            ListResult worldType = (ListResult) result.get("worldType");
+            InputResult seedInput = (InputResult) result.get("seed");
+
+            String superflatType = null;
+
+            if (worldType.getResult().equals("superflat")) {
+                prompt = new ConsolePrompt(terminal);
+                builder = prompt.getPromptBuilder();
+
+                builder.createListPrompt()
+                        .name("superflatType")
+                        .message("What superflat type?")
+                        .newItem("default").text("Default Superflat").add()
+                        .newItem("the_void").text("The Void").add()
+                        .newItem("redstone_ready").text("Redstone Ready").add()
+                        .newItem("water_world").text("Water World").add()
+                        .addPrompt();
+
+                result = prompt.prompt(builder.build());
+
+                ListResult superflatTypeResult = (ListResult) result.get("superflatType");
+                superflatType = superflatTypeResult.getResult();
+            }
+
+            String seed = seedInput.getResult();
+
+            if (seed == null || seed.isBlank()) {
+                seed = String.valueOf(new Random().nextLong());
+            }
 
             prompt = new ConsolePrompt(terminal);
             builder = prompt.getPromptBuilder();
@@ -1317,7 +1514,7 @@ enable-player-address-logging = %s
                     .name("version")
                     .message("What version do you Want?");
 
-            for (String version : SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).keySet()){
+            for (String version : SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).keySet()) {
                 versionBuilder.newItem(version).text(version).add();
             }
             versionBuilder.addPrompt();
@@ -1332,13 +1529,20 @@ enable-player-address-logging = %s
             ListResult version = (ListResult) result.get("version");
             ConfirmResult eula = (ConfirmResult) result.get("eula");
 
-            if (eula.getConfirmed() == ConfirmChoice.ConfirmationValue.NO){
+            if (eula.getConfirmed() == ConfirmChoice.ConfirmationValue.NO) {
                 System.out.println("Eula not accepted. Abort!");
-                return;
+                return null;
             }
 
-            createServer(ServerType.valueOf(serverType.getResult().toUpperCase(Locale.ROOT)),SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).get(version.getResult()), initialName == null ? name.getResult() : initialName);
-
+            return createServer(
+                    ServerType.valueOf(serverType.getResult().toUpperCase(Locale.ROOT)),
+                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).get(version.getResult()),
+                    initialName == null ? name.getResult() : initialName,
+                    memory.getResult(),
+                    worldType.getResult(),
+                    superflatType,
+                    seed
+            );
 
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -210,6 +210,7 @@ public class Main {
                 try {
                     ApiServer.start();
                 } catch (IOException e) {
+                    System.out.println("Failed to Start Server: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }, "communication");
@@ -238,9 +239,7 @@ public class Main {
 
                 try {
                     line = reader.readLine("> ");
-                } catch (UserInterruptException e) {
-                    break;
-                } catch (EndOfFileException e) {
+                } catch (UserInterruptException | EndOfFileException e) {
                     break;
                 }
 
@@ -256,11 +255,14 @@ public class Main {
                     break;
                 }
             }
-        }finally {
+        } catch (Throwable t) {
+            t.printStackTrace();
+            throw t;
+        } finally {
             System.out.println("Shutting Down All Servers and Proxy");
             ServerManager.shutdown();
 
-            System.exit(0);
+            ApiServer.stop();
         }
 
     }

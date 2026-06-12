@@ -71,4 +71,12 @@ public class ServerMangementService {
     public void unregister(String name) {
         SERVERS.remove(name);
     }
+
+    public Map<String,String> getServers(){
+        return SERVERS;
+    }
+
+    public String getTypeOf(String name) {
+        return SERVERS.get(name);
+    }
 }
