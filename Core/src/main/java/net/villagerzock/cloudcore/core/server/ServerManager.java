@@ -36,7 +36,7 @@ public class ServerManager {
     private static final String VELOCITY_CONFIG = """
 config-version = "2.8"
 bind = "0.0.0.0:%d"
-motd = "%s"
+motd = \"""%s\"""
 show-max-players = %d
 online-mode = %s
 force-key-authentication = %s
@@ -75,6 +75,13 @@ enable-player-address-logging = %s
 	packets-per-second = -1
 	bytes-per-second = -1
 	decompressed-bytes-per-second = 5242880
+
+[servers]
+    
+try = [
+]
+
+[forced-hosts]
 """;
 
     private static final String SERVER_PROPERTIES = """
@@ -139,7 +146,7 @@ enable-player-address-logging = %s
             server-ip=
             server-port=25565
             simulation-distance=10
-            spawn-protection=16
+            spawn-protection=0
             status-heartbeat-interval=0
             sync-chunk-writes=true
             text-filtering-config=
@@ -163,6 +170,8 @@ enable-player-address-logging = %s
             "-d",
             "--user",
             "%s:%s",
+            "--add-host",
+            "mariadb:host-gateway",
             "--network",
             DOCKER_NETWORK
     ));
@@ -440,8 +449,6 @@ enable-player-address-logging = %s
                 serverDir.toAbsolutePath() + ":/server",
                 "-v",
                 pluginsDir.toAbsolutePath() + ":/plugins",
-                "--add-host",
-                "mariadb:host-gateway",
 
                 "-e",
                 "TYPE=VELOCITY",
@@ -653,7 +660,10 @@ enable-player-address-logging = %s
                         StandardOpenOption.TRUNCATE_EXISTING
                 );
             }
-
+            if (seed.isBlank()){
+                long seedNr = new Random().nextLong();
+                seed = Long.toString(seedNr);
+            }
             WorldType.valueOf(worldType.toUpperCase(Locale.ROOT)).create(serverDir.resolve("world"),superflatType,seed);
 
             System.out.println("Created server template at: " + serverDir.toAbsolutePath());
@@ -734,7 +744,7 @@ enable-player-address-logging = %s
                         serverDir.toAbsolutePath() + ":/server",
                         "-w",
                         "/server",
-                        "eclipse-temurin:21",
+                        "eclipse-temurin:25",
                         "java",
                         "-Xms" + config.memory,
                         "-Xmx" + config.memory,
@@ -823,7 +833,6 @@ enable-player-address-logging = %s
 
     private static CompletableFuture<RunningServer> registerServerWhenStarted(String name, String base, String host, RunningServer runningServer) {
         return CompletableFuture.supplyAsync(() -> {
-            ProxyServerManager.getInstance().register(name, base, host, 25565);
 
             long timeoutAt = System.currentTimeMillis() + 120_000;
 
@@ -837,6 +846,7 @@ enable-player-address-logging = %s
                 }
 
                 if (runningServer.isReady()) {
+                    ProxyServerManager.getInstance().register(name, base, host, 25565);
                     return runningServer;
                 }
 
@@ -1551,6 +1561,8 @@ enable-player-address-logging = %s
 
     public static void shutdownServer(RunningServer server) {
         try {
+            ProxyServerManager.getInstance().unregister(server.name(),null);
+
             Process process = new ProcessBuilder(
                     "docker",
                     "rm",
@@ -1566,7 +1578,11 @@ enable-player-address-logging = %s
             if (process.waitFor() != 0) {
                 throw new RuntimeException("Failed to shutdown server " + server.name() + ": " + output);
             }
-            ProxyServerManager.getInstance().unregister(server.name(),null);
+
+
+            if (!server.singleton){
+                Main.deleteRecursive(server.serverDir);
+            }
             RUNNING_SERVERS.remove(server.name());
             System.out.println("Shutdown server: " + server.name());
         } catch (Exception e) {
@@ -1625,10 +1641,18 @@ enable-player-address-logging = %s
 
     public static void shutdown() {
         for (RunningServer server : new ArrayList<>(RUNNING_SERVERS.values())) {
-            shutdownServer(server);
+            try {
+                shutdownServer(server);
+            }catch (Throwable ignored){
+
+            }
         }
 
-        shutdownProxy();
+        try {
+            shutdownProxy();
+        }catch (Throwable ignored){
+
+        }
         removeNetwork();
     }
 }

@@ -28,18 +28,17 @@ public class ServerMangementService {
     public RegisteredServer findAnyServerOfType(String type){
         int smallest = Integer.MAX_VALUE;
         RegisteredServer smallestServer = null;
-        if (SERVERS.containsKey(type)){
-            for (String server : SERVERS.keySet()){
-                if (SERVERS.get(server).equals(type)){
-                    Optional<RegisteredServer> serverOpt = proxyServer.getServer(server);
-                    if (serverOpt.isPresent() && smallest > serverOpt.get().getPlayersConnected().size()){
-                        smallest = serverOpt.get().getPlayersConnected().size();
-                        smallestServer = serverOpt.get();
-                    }
+        for (String server : SERVERS.keySet()){
+            if (SERVERS.get(server).equals(type)){
+                Optional<RegisteredServer> serverOpt = proxyServer.getServer(server);
+                if (serverOpt.isPresent() && smallest > serverOpt.get().getPlayersConnected().size()){
+                    smallest = serverOpt.get().getPlayersConnected().size();
+                    smallestServer = serverOpt.get();
                 }
             }
-        }else {
-            throw new IllegalArgumentException("Cannot Find Any Server of type: " + type);
+        }
+        if (smallestServer == null){
+            return null;
         }
 
         return smallestServer;

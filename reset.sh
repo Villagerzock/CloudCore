@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 set -e
 
@@ -18,6 +18,6 @@ echo "Removing all build cache..."
 docker builder prune -af
 
 echo "Removing CloudCore data..."
-rm -rf ~/.cloudcore/instances
+#rm -rf ~/.cloudcore/instances
 
 echo "Done."

@@ -5,6 +5,9 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
 import net.villagerzock.velocity.config.LobbyConfiguration;
 import net.villagerzock.velocity.dto.LobbyResponseDto;
 import net.villagerzock.velocity.dto.LobbySettingsDto;
@@ -49,15 +52,21 @@ public class ServerController {
         serverMangementService.unregister(server.name());
         Optional<RegisteredServer> fallbackServerOpt = server.fallback() == null ? Optional.of(serverMangementService.findAnyServerOfType(lobbyConfiguration.getServer())) : proxyServer.getServer(server.fallback());
 
-        if (shutdownServerOpt.isEmpty() || fallbackServerOpt.isEmpty()) {
+        if (shutdownServerOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         RegisteredServer shutdownServer = shutdownServerOpt.get();
-        RegisteredServer fallbackServer = fallbackServerOpt.get();
+
 
         for (Player player : shutdownServer.getPlayersConnected()) {
-            player.createConnectionRequest(fallbackServer).connect();
+            if (fallbackServerOpt.isPresent()){
+                RegisteredServer fallbackServer = fallbackServerOpt.get();
+                player.sendMessage(Component.text("The Server you were on Shutdown so you were moved to a Fallback Server!").style(Style.style(NamedTextColor.RED)));
+                player.createConnectionRequest(fallbackServer).fireAndForget();
+            }else {
+                player.disconnect(Component.text("The Server you were on Shutdown and there are no Available Lobbies!").style(Style.style(NamedTextColor.RED)));
+            }
         }
 
         proxyServer.unregisterServer(shutdownServer.getServerInfo());

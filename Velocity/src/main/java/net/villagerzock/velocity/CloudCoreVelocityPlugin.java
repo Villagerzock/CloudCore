@@ -8,6 +8,10 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextColor;
 import net.villagerzock.velocity.config.LobbyConfiguration;
 import net.villagerzock.velocity.config.MatchmakingConfiguration;
 import net.villagerzock.velocity.service.ServerMangementService;
@@ -19,6 +23,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.format.TextStyle;
 
 
 @Plugin(
@@ -80,6 +85,7 @@ public class CloudCoreVelocityPlugin {
         ServerMangementService service = application.getBean(ServerMangementService.class);
         RegisteredServer target = service.findAnyServerOfType(lobbyConfiguration.getServer());
         if (target == null){
+            event.getPlayer().disconnect(Component.text("There are no Available Lobby Servers right now! Please try again Later").style(Style.style(NamedTextColor.RED)));
             return;
         }
 
