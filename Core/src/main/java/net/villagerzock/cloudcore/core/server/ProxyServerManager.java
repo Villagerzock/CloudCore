@@ -7,9 +7,11 @@ import net.villagerzock.cloudcore.core.server.dto.ServerCreationDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerShutdownDto;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -80,5 +82,28 @@ public class ProxyServerManager {
 
     public void callback(UUID uuid, Map<String, Object> data) {
         send("POST", "/api/callback", GSON.toJson(new CallbackDto(uuid,data)));
+    }
+    public void maintenanceOn() {
+        send("POST", "/api/maintenance/on", "");
+    }
+
+    public void maintenanceOff() {
+        send("POST", "/api/maintenance/off", "");
+    }
+
+    public void addPlayer(String player) {
+        send("POST", "/api/maintenance/?playerName=" + URLEncoder.encode(player, StandardCharsets.UTF_8), "");
+    }
+
+    public void removePlayer(String player) {
+        send("DELETE", "/api/maintenance?playerName=" + URLEncoder.encode(player, StandardCharsets.UTF_8), "");
+    }
+
+    public void addPlayer(UUID player) {
+        send("POST", "/api/maintenance/?playerUUID=" + player, "");
+    }
+
+    public void removePlayer(UUID player) {
+        send("DELETE", "/api/maintenance?playerUUID=" + player, "");
     }
 }

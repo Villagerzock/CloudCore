@@ -2,10 +2,7 @@ package net.villagerzock.cloudcore.core.config;
 
 import lombok.Getter;
 import net.villagerzock.cloudcore.core.server.ServerManager;
-import org.jline.consoleui.prompt.ConsolePrompt;
-import org.jline.consoleui.prompt.InputResult;
-import org.jline.consoleui.prompt.PromptResultItemIF;
-import org.jline.consoleui.prompt.builder.PromptBuilder;
+import net.villagerzock.cloudcore.core.ui.LanternaUi;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.representer.Representer;
@@ -15,9 +12,6 @@ import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
-
-import static net.villagerzock.cloudcore.core.Main.terminal;
 
 public class Config {
 
@@ -129,36 +123,9 @@ public class Config {
     }
 
     private static MariaDb launchDatabaseConfigWizard() throws IOException {
-        ConsolePrompt prompt = new ConsolePrompt(terminal);
-        PromptBuilder builder = prompt.getPromptBuilder();
-
-        builder.createText()
-                .addLine("Setup Database")
-                .addPrompt();
-
-        builder.createInputPrompt()
-                .name("port")
-                .message("What Port is MariaDB running on?")
-                .defaultValue("3306")
-                .addPrompt();
-
-        builder.createInputPrompt()
-                .name("user")
-                .message("What is the name of the MariaDB User?")
-                .defaultValue("cloudcore")
-                .addPrompt();
-
-        builder.createInputPrompt()
-                .name("password")
-                .message("What is the Password?")
-                .mask('*')
-                .addPrompt();
-
-        Map<String, ? extends PromptResultItemIF> result = prompt.prompt(builder.build());
-
-        String port = ((InputResult) result.get("port")).getResult();
-        String user = ((InputResult) result.get("user")).getResult();
-        String password = ((InputResult) result.get("password")).getResult();
+        String port = LanternaUi.input("Setup Database", "What Port is MariaDB running on?", "3306", false);
+        String user = LanternaUi.input("Setup Database", "What is the name of the MariaDB User?", "cloudcore", false);
+        String password = LanternaUi.input("Setup Database", "What is the Password?", "", true);
 
         MariaDb db = new MariaDb();
 

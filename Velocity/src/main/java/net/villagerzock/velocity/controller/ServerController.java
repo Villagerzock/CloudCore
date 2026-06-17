@@ -47,7 +47,7 @@ public class ServerController {
     public ResponseEntity<String> shutdownServer(@RequestBody ServerShutdownDto server) {
         Optional<RegisteredServer> shutdownServerOpt = proxyServer.getServer(server.name());
         serverMangementService.unregister(server.name());
-        Optional<RegisteredServer> fallbackServerOpt = server.fallback() == null ? Optional.of(serverMangementService.findAnyServerOfType(cloudCoreConfiguration.getLobbyServer())) : proxyServer.getServer(server.fallback());
+        Optional<RegisteredServer> fallbackServerOpt = server.fallback() == null ? Optional.ofNullable(serverMangementService.findAnyServerOfType(cloudCoreConfiguration.getLobbyServer())) : proxyServer.getServer(server.fallback());
 
         if (shutdownServerOpt.isEmpty()) {
             return ResponseEntity.notFound().build();

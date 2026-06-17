@@ -5,12 +5,14 @@
   "main": "bots.ts",
   "type": "module",
   "scripts": {
-    "start": "npx tsx"
+    "run": "tsx .",
+    "ping": "tsx . ping"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "minecraft-protocol": "^1.66.2",
     "mineflayer": "^4.37.1"
   },
   "devDependencies": {

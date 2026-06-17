@@ -6,15 +6,7 @@ import net.villagerzock.cloudcore.core.Main;
 import net.villagerzock.cloudcore.core.config.Config;
 import net.villagerzock.cloudcore.core.config.NoClassTagRepresenter;
 import net.villagerzock.cloudcore.core.server.dto.ConfigDto;
-import org.jline.consoleui.elements.ConfirmChoice;
-import org.jline.consoleui.prompt.*;
-import org.jline.consoleui.prompt.builder.ListPromptBuilder;
-import org.jline.consoleui.prompt.builder.PromptBuilder;
-import org.jline.terminal.Attributes;
-import org.jline.terminal.Terminal;
-import org.jline.utils.AttributedString;
-import org.jline.utils.Display;
-import org.jline.utils.NonBlockingReader;
+import net.villagerzock.cloudcore.core.ui.LanternaUi;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -26,14 +18,11 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 
 import static net.villagerzock.cloudcore.core.Main.SERVER_TO_VERSION_TO_URL_MAP;
-import static net.villagerzock.cloudcore.core.Main.terminal;
 
 public class ServerManager {
-
     private static final String VELOCITY_CONFIG = """
 config-version = "2.8"
 bind = "0.0.0.0:%d"
@@ -169,6 +158,7 @@ try = [
             "docker",
             "run",
             "-d",
+            "-i",
             "--user",
             "%s:%s",
             "--add-host",
@@ -181,7 +171,8 @@ try = [
         String uid = getCommandOutput("id", "-u");
         String gid = getCommandOutput("id", "-g");
 
-        DOCKER_BASE_ARGS.set(4,DOCKER_BASE_ARGS.get(4).formatted(uid,gid));
+        int userArgumentIndex = DOCKER_BASE_ARGS.indexOf("%s:%s");
+        DOCKER_BASE_ARGS.set(userArgumentIndex, DOCKER_BASE_ARGS.get(userArgumentIndex).formatted(uid, gid));
     }
 
 
@@ -324,32 +315,9 @@ try = [
                 return;
             }
 
-            ConsolePrompt prompt = new ConsolePrompt(terminal);
-            PromptBuilder builder = prompt.getPromptBuilder();
-
-            builder.createInputPrompt()
-                    .name("proxyPort")
-                    .message("Proxy port")
-                    .defaultValue("25565")
-                    .addPrompt();
-
-            builder.createInputPrompt()
-                    .name("memory")
-                    .message("Proxy memory, example: 512M / 1G")
-                    .defaultValue("512M")
-                    .addPrompt();
-
-            builder.createInputPrompt()
-                    .name("velocityVersion")
-                    .message("Velocity version")
-                    .defaultValue("latest")
-                    .addPrompt();
-
-            Map<String, ? extends PromptResultItemIF> result = prompt.prompt(builder.build());
-
-            String proxyPort = ((InputResult) result.get("proxyPort")).getResult();
-            String memory = ((InputResult) result.get("memory")).getResult();
-            String velocityVersion = ((InputResult) result.get("velocityVersion")).getResult();
+            String proxyPort = LanternaUi.input("Proxy Setup", "Proxy port", "25565", false);
+            String memory = LanternaUi.input("Proxy Setup", "Proxy memory, example: 512M / 1G", "512M", false);
+            String velocityVersion = LanternaUi.input("Proxy Setup", "Velocity version", "latest", false);
 
             Files.createDirectories(proxyDir);
             writeProxyLaunchConfig(proxyConfigFile, proxyPort, memory, velocityVersion);
@@ -782,7 +750,8 @@ try = [
                         containerId,
                         containerName,
                         serverDir,
-                        port
+                        port,
+                        new CompletableFuture<>()
                 );
 
                 RUNNING_SERVERS.put(instanceName, runningServer);
@@ -798,6 +767,7 @@ try = [
                                 runningServer.containerName(),
                                 runningServer
                         );
+
 
                         return new ServerLaunchResult(
                                 ServerState.RUNNING,
@@ -837,7 +807,7 @@ try = [
     }
 
     private static CompletableFuture<RunningServer> registerServerWhenStarted(String name, String base, String host, RunningServer runningServer) {
-        return CompletableFuture.supplyAsync(() -> {
+        return runningServer.future.completeAsync(() -> {
 
             long timeoutAt = System.currentTimeMillis() + 120_000;
 
@@ -853,6 +823,11 @@ try = [
                 if (runningServer.isReady()) {
                     ProxyServerManager.getInstance().register(name, base, host, 25565);
                     return runningServer;
+                }
+
+
+                if (Thread.currentThread().isInterrupted()){
+                    throw new CancellationException();
                 }
 
                 try {
@@ -1014,7 +989,8 @@ try = [
                                 containerId,
                                 containerName,
                                 serverDir,
-                                port
+                                port,
+                                new CompletableFuture<>()
                         )
                 );
 
@@ -1179,7 +1155,8 @@ try = [
             String containerId,
             String containerName,
             Path serverDir,
-            String port
+            String port,
+            CompletableFuture<RunningServer> future
     ) {
         public boolean isCrashed() {
             try {
@@ -1226,6 +1203,8 @@ try = [
                 Process process = new ProcessBuilder(
                         "docker",
                         "logs",
+                        "--tail",
+                        "100",
                         containerId
                 ).start();
 
@@ -1235,6 +1214,9 @@ try = [
             } catch (Exception e) {
                 return false;
             }
+        }
+        public boolean canConnect(){
+            return future.state() == Future.State.SUCCESS;
         }
     }
 
@@ -1256,11 +1238,36 @@ try = [
             throw new RuntimeException("Failed to print logs", e);
         }
     }
-    public static void showLiveLogsBook(RunningServer server, Terminal terminal) {
-        Process process = null;
+
+    public static String selectRunningServer() {
+        Map<String, RunningServer> servers = getRunningServers();
+
+        if (servers.isEmpty()) {
+            System.out.println("No servers running.");
+            return null;
+        }
 
         try {
-            List<String> lines = Collections.synchronizedList(new ArrayList<>());
+            List<LanternaUi.Option> options = servers.values().stream()
+                    .sorted(Comparator.comparing(RunningServer::name))
+                    .map(server -> new LanternaUi.Option(
+                            server.name(),
+                            server.name() + " | template=" + server.templateName() + " | port=" + server.port()
+                    ))
+                    .toList();
+
+            return LanternaUi.select("Server Logs", "Select server", options);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to select server", e);
+        }
+    }
+
+    public static void showLiveLogsBook(RunningServer server) {
+        Process process = null;
+        Process commandProcess = null;
+
+        try {
+            List<String> lines = new CopyOnWriteArrayList<>();
 
             Process snapshotProcess = new ProcessBuilder(
                     "docker",
@@ -1313,111 +1320,81 @@ try = [
             logThread.setDaemon(true);
             logThread.start();
 
-            Terminal.SignalHandler oldHandler = terminal.handle(Terminal.Signal.INT, signal -> {
-                if (finalProcess.isAlive()) {
-                    finalProcess.destroy();
+            commandProcess = new ProcessBuilder(
+                    "docker",
+                    "attach",
+                    "--sig-proxy=false",
+                    server.containerName()
+            ).redirectErrorStream(true).start();
+
+            Process finalCommandProcess = commandProcess;
+
+            Thread commandOutputThread = new Thread(() -> {
+                try (InputStream input = finalCommandProcess.getInputStream()) {
+                    input.transferTo(OutputStream.nullOutputStream());
+                } catch (Exception ignored) {
                 }
             });
 
-            Attributes oldAttributes = terminal.enterRawMode();
-            Display display = new Display(terminal, true);
+            commandOutputThread.setDaemon(true);
+            commandOutputThread.start();
 
-            terminal.puts(org.jline.utils.InfoCmp.Capability.enter_ca_mode);
-            terminal.puts(org.jline.utils.InfoCmp.Capability.clear_screen);
-            terminal.flush();
+            BufferedWriter commandWriter = new BufferedWriter(
+                    new OutputStreamWriter(commandProcess.getOutputStream(), StandardCharsets.UTF_8)
+            );
 
-            try {
-                boolean running = true;
+            LanternaUi.showLiveLogs(
+                    "Logs: " + server.name() + " | Port: " + server.port() + " | Container: " + server.containerName(),
+                    lines,
+                    command -> {
+                        commandWriter.write(command);
+                        commandWriter.newLine();
+                        commandWriter.flush();
+                    },
+                    finalProcess::isAlive,
+                    () -> dockerStats(server)
+            );
 
-                while (running) {
-                    display.update(buildLogScreen(terminal, server, lines), 0);
-
-                    NonBlockingReader reader = terminal.reader();
-                    int ch = reader.read(250);
-
-                    if (ch == 'q' || ch == 'Q' || ch == 3) {
-                        running = false;
-                    }
-
-                    if (!process.isAlive()) {
-                        running = false;
-                    }
-                }
-            } finally {
-                display.update(List.of(), 0);
-
-                terminal.puts(org.jline.utils.InfoCmp.Capability.exit_ca_mode);
-                terminal.flush();
-
-                terminal.setAttributes(oldAttributes);
-                terminal.handle(Terminal.Signal.INT, oldHandler);
-
-                if (process.isAlive()) {
-                    process.destroy();
-                }
+            if (process.isAlive()) {
+                process.destroy();
+            }
+            if (commandProcess.isAlive()) {
+                commandProcess.destroy();
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to show live logs", e);
         }
     }
 
-    private static List<AttributedString> buildLogScreen(
-            Terminal terminal,
-            RunningServer server,
-            List<String> lines
-    ) {
-        int width = Math.max(20, terminal.getWidth());
-        int height = Math.max(8, terminal.getHeight());
+    private static String dockerStats(RunningServer server) {
+        try {
+            Process process = new ProcessBuilder(
+                    "docker",
+                    "stats",
+                    "--no-stream",
+                    "--format",
+                    "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}",
+                    server.containerName()
+            ).redirectErrorStream(true).start();
 
-        List<AttributedString> screen = new ArrayList<>();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
 
-        screen.add(new AttributedString("═".repeat(width)));
-        screen.add(new AttributedString(cutLine(
-                " Logs: " + server.name() + " | Port: " + server.port() + " | Container: " + server.containerName(),
-                width
-        )));
-        screen.add(new AttributedString("═".repeat(width)));
+            if (process.waitFor() != 0 || output.isBlank()) {
+                return "Stats unavailable";
+            }
 
-        int logHeight = height - 5;
+            String[] parts = output.split("\\|", 3);
 
-        List<String> copy;
+            if (parts.length != 3) {
+                return "Stats unavailable";
+            }
 
-        synchronized (lines) {
-            copy = new ArrayList<>(lines);
+            return "CPU " + parts[0].trim()
+                    + " | RAM " + parts[1].trim()
+                    + " | Network " + parts[2].trim();
+        } catch (Exception e) {
+            return "Stats unavailable";
         }
-
-        int start = Math.max(0, copy.size() - logHeight);
-
-        for (int i = start; i < copy.size(); i++) {
-            screen.add(new AttributedString(cutLine(copy.get(i), width)));
-        }
-
-        while (screen.size() < height - 2) {
-            screen.add(new AttributedString(""));
-        }
-
-        screen.add(new AttributedString("═".repeat(width)));
-        screen.add(new AttributedString(cutLine(" Press q to quit | Ctrl+C to exit ", width)));
-
-        return screen;
-    }
-
-    private static String cutLine(String text, int width) {
-        if (text == null) {
-            return "";
-        }
-
-        text = text.replace("\t", "    ");
-
-        if (text.length() <= width) {
-            return text;
-        }
-
-        if (width <= 3) {
-            return text.substring(0, width);
-        }
-
-        return text.substring(0, width - 3) + "...";
     }
 
     private static String getCommandOutput(String... command) {
@@ -1443,118 +1420,80 @@ try = [
 
     public static String launchCreationWizard(String initialName) {
         try {
-
-            ConsolePrompt prompt = new ConsolePrompt(terminal);
-
-            PromptBuilder builder = prompt.getPromptBuilder();
-
-            if (initialName == null) {
-                builder.createInputPrompt()
-                        .name("name")
-                        .message("How do you want to call the Server?")
-                        .addPrompt();
-            } else {
-                builder.createText()
-                        .addLine("Name is: " + initialName)
-                        .addPrompt();
-            }
-
-            builder.createListPrompt()
-                    .name("serverType")
-                    .message("What server type?")
-                    .newItem("paper").text("Paper").add()
-                    .newItem("folia").text("Folia").add()
-                    .newItem("vanilla").text("Vanilla (Unsafe)").add()
-                    .addPrompt();
-
-            builder.createInputPrompt()
-                    .name("memory")
-                    .message("How much memory should the server use? Example: 1G / 2048M")
-                    .defaultValue("1G")
-                    .addPrompt();
-
-            builder.createListPrompt()
-                    .name("worldType")
-                    .message("What world type?")
-                    .newItem("default").text("Default").add()
-                    .newItem("superflat").text("Superflat").add()
-                    .newItem("large_biomes").text("Large Biomes").add()
-                    .newItem("amplified").text("Amplified").add()
-                    .addPrompt();
-
-            builder.createInputPrompt()
-                    .name("seed")
-                    .message("World seed, leave empty for random")
-                    .addPrompt();
-
-            Map<String, ? extends PromptResultItemIF> result = prompt.prompt(builder.build());
-
-            ListResult serverType = (ListResult) result.get("serverType");
-            InputResult name = initialName == null ? (InputResult) result.get("name") : null;
-            InputResult memory = (InputResult) result.get("memory");
-            ListResult worldType = (ListResult) result.get("worldType");
-            InputResult seedInput = (InputResult) result.get("seed");
+            String name = initialName == null
+                    ? LanternaUi.input("Create Server", "How do you want to call the Server?", "", false)
+                    : initialName;
+            String serverType = LanternaUi.select(
+                    "Create Server",
+                    "What server type?",
+                    List.of(
+                            new LanternaUi.Option("paper", "Paper"),
+                            new LanternaUi.Option("folia", "Folia"),
+                            new LanternaUi.Option("vanilla", "Vanilla (Unsafe)")
+                    )
+            );
+            String memory = LanternaUi.input(
+                    "Create Server",
+                    "How much memory should the server use? Example: 1G / 2048M",
+                    "1G",
+                    false
+            );
+            String worldType = LanternaUi.select(
+                    "Create Server",
+                    "What world type?",
+                    List.of(
+                            new LanternaUi.Option("default", "Default"),
+                            new LanternaUi.Option("superflat", "Superflat"),
+                            new LanternaUi.Option("large_biomes", "Large Biomes"),
+                            new LanternaUi.Option("amplified", "Amplified")
+                    )
+            );
+            String seed = LanternaUi.input("Create Server", "World seed, leave empty for random", "", false);
 
             String superflatType = null;
 
-            if (worldType.getResult().equals("superflat")) {
-                prompt = new ConsolePrompt(terminal);
-                builder = prompt.getPromptBuilder();
-
-                builder.createListPrompt()
-                        .name("superflatType")
-                        .message("What superflat type?")
-                        .newItem("default").text("Default Superflat").add()
-                        .newItem("the_void").text("The Void").add()
-                        .newItem("redstone_ready").text("Redstone Ready").add()
-                        .newItem("water_world").text("Water World").add()
-                        .addPrompt();
-
-                result = prompt.prompt(builder.build());
-
-                ListResult superflatTypeResult = (ListResult) result.get("superflatType");
-                superflatType = superflatTypeResult.getResult();
+            if (worldType.equals("superflat")) {
+                superflatType = LanternaUi.select(
+                        "Create Server",
+                        "What superflat type?",
+                        List.of(
+                                new LanternaUi.Option("default", "Default Superflat"),
+                                new LanternaUi.Option("the_void", "The Void"),
+                                new LanternaUi.Option("redstone_ready", "Redstone Ready"),
+                                new LanternaUi.Option("water_world", "Water World")
+                        )
+                );
             }
-
-            String seed = seedInput.getResult();
 
             if (seed == null || seed.isBlank()) {
                 seed = String.valueOf(new Random().nextLong());
             }
 
-            prompt = new ConsolePrompt(terminal);
-            builder = prompt.getPromptBuilder();
+            String version = LanternaUi.select(
+                    "Create Server",
+                    "What version do you Want?",
+                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType)
+                            .keySet()
+                            .stream()
+                            .map(value -> new LanternaUi.Option(value, value))
+                            .toList()
+            );
+            boolean eula = LanternaUi.confirm(
+                    "Create Server",
+                    "Do you accept the Mojang EULA? (https://www.minecraft.net/en-us/eula)"
+            );
 
-            ListPromptBuilder versionBuilder = builder.createListPrompt()
-                    .name("version")
-                    .message("What version do you Want?");
-
-            for (String version : SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).keySet()) {
-                versionBuilder.newItem(version).text(version).add();
-            }
-            versionBuilder.addPrompt();
-
-            builder.createConfirmPromp()
-                    .name("eula")
-                    .message("Do you accept the Mojang EULA? (https://www.minecraft.net/en-us/eula)")
-                    .addPrompt();
-
-            result = prompt.prompt(builder.build());
-
-            ListResult version = (ListResult) result.get("version");
-            ConfirmResult eula = (ConfirmResult) result.get("eula");
-
-            if (eula.getConfirmed() == ConfirmChoice.ConfirmationValue.NO) {
+            if (!eula) {
                 System.out.println("Eula not accepted. Abort!");
                 return null;
             }
 
             return createServer(
-                    ServerType.valueOf(serverType.getResult().toUpperCase(Locale.ROOT)),
-                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType.getResult()).get(version.getResult()),
-                    initialName == null ? name.getResult() : initialName,
-                    memory.getResult(),
-                    worldType.getResult(),
+                    ServerType.valueOf(serverType.toUpperCase(Locale.ROOT)),
+                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType).get(version),
+                    name,
+                    memory,
+                    worldType,
                     superflatType,
                     seed
             );
@@ -1566,7 +1505,11 @@ try = [
 
     public static void shutdownServer(RunningServer server) {
         try {
-            ProxyServerManager.getInstance().unregister(server.name(),null);
+            if (server.canConnect()){
+                ProxyServerManager.getInstance().unregister(server.name(),null);
+            }else {
+                server.future.cancel(true);
+            }
 
             Process process = new ProcessBuilder(
                     "docker",
@@ -1645,11 +1588,12 @@ try = [
     }
 
     public static void shutdown() {
-        for (RunningServer server : new ArrayList<>(RUNNING_SERVERS.values())) {
+        ArrayList<RunningServer> servers = new ArrayList<>(RUNNING_SERVERS.values());
+        for (RunningServer server : servers) {
             try {
                 shutdownServer(server);
-            }catch (Throwable ignored){
-
+            }catch (Throwable t){
+                t.printStackTrace();
             }
         }
 
