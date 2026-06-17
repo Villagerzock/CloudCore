@@ -5,6 +5,7 @@ import lombok.Setter;
 import net.villagerzock.cloudcore.core.Main;
 import net.villagerzock.cloudcore.core.config.Config;
 import net.villagerzock.cloudcore.core.config.NoClassTagRepresenter;
+import net.villagerzock.cloudcore.core.server.dto.ConfigDto;
 import org.jline.consoleui.elements.ConfirmChoice;
 import org.jline.consoleui.prompt.*;
 import org.jline.consoleui.prompt.builder.ListPromptBuilder;
@@ -239,7 +240,11 @@ try = [
         }
 
 
-        ProxyServerManager.getInstance().setLobby(lobbyConfig.getServer());
+        ProxyServerManager.getInstance().configure(new ConfigDto(
+                lobbyConfig.getServer(),
+                null,
+                Config.getInstance().getProxy().getMaintenanceMotd()
+        ));
     }
 
     private static void ensureDockerNetwork() {

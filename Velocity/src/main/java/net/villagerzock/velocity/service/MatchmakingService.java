@@ -2,7 +2,7 @@ package net.villagerzock.velocity.service;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
-import net.villagerzock.velocity.config.MatchmakingConfiguration;
+import net.villagerzock.velocity.config.CloudCoreConfiguration;
 import net.villagerzock.velocity.entities.MatchmakingServer;
 import net.villagerzock.velocity.entities.StartingMatchmakingServer;
 import org.springframework.stereotype.Service;
@@ -15,18 +15,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class MatchmakingService {
     private final List<MatchmakingServer> SERVERS = new CopyOnWriteArrayList<>();
     private final List<StartingMatchmakingServer> STARTING_QUEUE = new CopyOnWriteArrayList<>();
-    private final MatchmakingConfiguration matchmakingConfiguration;
+    private final CloudCoreConfiguration cloudCoreConfiguration;
     private final ProxyServer proxyServer;
     private final CallbackService callbackService;
 
-    public MatchmakingService(MatchmakingConfiguration matchmakingConfiguration, ProxyServer proxyServer, CallbackService callbackService) {
-        this.matchmakingConfiguration = matchmakingConfiguration;
+    public MatchmakingService(CloudCoreConfiguration cloudCoreConfiguration, ProxyServer proxyServer, CallbackService callbackService) {
+        this.cloudCoreConfiguration = cloudCoreConfiguration;
         this.proxyServer = proxyServer;
         this.callbackService = callbackService;
     }
 
     public CompletableFuture<RegisteredServer> queue(List<UUID> party, String type, int mmv){
-        MatchmakingConfiguration.ServerConfig typeConfig = matchmakingConfiguration.getServerConfigs().get(type);
+        CloudCoreConfiguration.ServerConfig typeConfig = cloudCoreConfiguration.getMatchmakingServerConfigs().get(type);
 
         if (typeConfig == null) {
             return CompletableFuture.failedFuture(

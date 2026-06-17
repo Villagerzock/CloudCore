@@ -8,16 +8,13 @@ import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
-import net.villagerzock.velocity.config.LobbyConfiguration;
-import net.villagerzock.velocity.dto.LobbyResponseDto;
-import net.villagerzock.velocity.dto.LobbySettingsDto;
+import net.villagerzock.velocity.config.CloudCoreConfiguration;
 import net.villagerzock.velocity.dto.ServerCreationDto;
 import net.villagerzock.velocity.dto.ServerShutdownDto;
 import net.villagerzock.velocity.service.ServerMangementService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.text.html.Option;
 import java.net.InetSocketAddress;
 import java.util.*;
 
@@ -26,12 +23,12 @@ import java.util.*;
 public class ServerController {
     private final ProxyServer proxyServer;
     private final ServerMangementService serverMangementService;
-    private final LobbyConfiguration lobbyConfiguration;
+    private final CloudCoreConfiguration cloudCoreConfiguration;
 
-    public ServerController(ProxyServer proxyServer, ServerMangementService serverMangementService, LobbyConfiguration lobbyConfiguration) {
+    public ServerController(ProxyServer proxyServer, ServerMangementService serverMangementService, CloudCoreConfiguration cloudCoreConfiguration) {
         this.proxyServer = proxyServer;
         this.serverMangementService = serverMangementService;
-        this.lobbyConfiguration = lobbyConfiguration;
+        this.cloudCoreConfiguration = cloudCoreConfiguration;
     }
 
     @PostMapping("/")
@@ -50,7 +47,7 @@ public class ServerController {
     public ResponseEntity<String> shutdownServer(@RequestBody ServerShutdownDto server) {
         Optional<RegisteredServer> shutdownServerOpt = proxyServer.getServer(server.name());
         serverMangementService.unregister(server.name());
-        Optional<RegisteredServer> fallbackServerOpt = server.fallback() == null ? Optional.of(serverMangementService.findAnyServerOfType(lobbyConfiguration.getServer())) : proxyServer.getServer(server.fallback());
+        Optional<RegisteredServer> fallbackServerOpt = server.fallback() == null ? Optional.of(serverMangementService.findAnyServerOfType(cloudCoreConfiguration.getLobbyServer())) : proxyServer.getServer(server.fallback());
 
         if (shutdownServerOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -72,27 +69,6 @@ public class ServerController {
         proxyServer.unregisterServer(shutdownServer.getServerInfo());
 
         return ResponseEntity.ok("Server Removed");
-    }
-
-    @PostMapping("/lobby")
-    public ResponseEntity<String> setLobbySettings(@RequestBody LobbySettingsDto lobbySettingsDto){
-        lobbyConfiguration.setServer(lobbySettingsDto.server());
-        return ResponseEntity.ok("Updated");
-    }
-
-    @GetMapping("/lobby")
-    public ResponseEntity<LobbyResponseDto> getLobbyServers(){
-        Map<String, String> unformattedServers = serverMangementService.getServers();
-
-        List<String> servers = new ArrayList<>();
-
-        for (String server : unformattedServers.keySet()) {
-            if (unformattedServers.get(server).equals(lobbyConfiguration.getServer())) {
-                servers.add(server);
-            }
-        }
-
-        return ResponseEntity.ok(new LobbyResponseDto(lobbyConfiguration.getServer(),servers));
     }
 
 

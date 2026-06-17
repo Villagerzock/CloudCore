@@ -70,6 +70,8 @@ public class Config {
         public boolean onlineMode = true;
         @Getter
         public String motd = "<#09add3>A Velocity Server";
+        @Getter
+        public String maintenanceMotd = "<red>This Server is under Maintenance!";
     }
 
     public static class LobbyConfig {
@@ -93,8 +95,6 @@ public class Config {
         @Getter
         public Integer amount = 1;
     }
-
-
 
     public static void load() {
         Path path = ServerManager.BASE_DIR.resolve("config.yml");

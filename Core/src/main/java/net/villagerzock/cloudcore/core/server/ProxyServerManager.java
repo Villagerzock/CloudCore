@@ -2,7 +2,7 @@ package net.villagerzock.cloudcore.core.server;
 
 import com.google.gson.Gson;
 import net.villagerzock.cloudcore.core.server.dto.CallbackDto;
-import net.villagerzock.cloudcore.core.server.dto.LobbyDataDto;
+import net.villagerzock.cloudcore.core.server.dto.ConfigDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerCreationDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerShutdownDto;
 
@@ -44,8 +44,8 @@ public class ProxyServerManager {
         );
     }
 
-    public void setLobby(String name){
-        send("POST", "/api/server/lobby", GSON.toJson(new LobbyDataDto(name)));
+    public void configure(ConfigDto configDto){
+        send("POST", "/api/configure", GSON.toJson(configDto));
     }
 
     private void send(String method, String path, String body) {

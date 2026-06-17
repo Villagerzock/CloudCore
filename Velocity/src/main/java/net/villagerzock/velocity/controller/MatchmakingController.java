@@ -2,7 +2,6 @@ package net.villagerzock.velocity.controller;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.villagerzock.velocity.config.MatchmakingConfiguration;
 import net.villagerzock.velocity.dto.MatchmakingRequestDto;
 import net.villagerzock.velocity.service.MatchmakingService;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,12 +17,10 @@ import java.util.UUID;
 @RequestMapping("/api/matchmaking")
 public class MatchmakingController {
 
-    private final MatchmakingConfiguration matchmakingConfiguration;
     private final MatchmakingService matchmakingService;
     private final ProxyServer proxyServer;
 
-    public MatchmakingController(MatchmakingConfiguration matchmakingConfiguration, MatchmakingService matchmakingService, ProxyServer proxyServer) {
-        this.matchmakingConfiguration = matchmakingConfiguration;
+    public MatchmakingController(MatchmakingService matchmakingService, ProxyServer proxyServer) {
         this.matchmakingService = matchmakingService;
         this.proxyServer = proxyServer;
     }
@@ -42,12 +38,6 @@ public class MatchmakingController {
         });
 
         return ResponseEntity.notFound().build();
-    }
-
-    @PostMapping("/settings")
-    public ResponseEntity<String> uploadSettings(@RequestBody Map<String, MatchmakingConfiguration.ServerConfig> serverConfigs){
-        matchmakingConfiguration.setServerConfigs(serverConfigs);
-        return ResponseEntity.ok("Updated");
     }
 
 }

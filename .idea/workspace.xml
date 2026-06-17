@@ -1,7 +1,254 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="5f649ae9-9b81-4a38-8d6a-f657d37a4528" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/dto/ConfigDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/command/arguments/PlayerArgumentType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/config/CloudCoreConfiguration.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/ConfigController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/MaintenanceController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/dto/ConfigDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/entities/MaintenancePlayer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/repositories/MaintenancePlayerRepo.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/service/MaintenanceService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/config/Config.java" beforeDir="false" afterPath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/config/Config.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/ProxyServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/ProxyServerManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/ServerManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Core/src/main/java/net/villagerzock/cloudcore/core/server/dto/LobbyDataDto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/CloudCoreVelocityPlugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/CloudCoreVelocityPlugin.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/config/LobbyConfiguration.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/config/MatchmakingConfiguration.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/config/VelocityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/config/VelocityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/MatchmakingController.java" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/MatchmakingController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/ServerController.java" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/controller/ServerController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/dto/LobbyResponseDto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/dto/LobbySettingsDto.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/service/MatchmakingService.java" beforeDir="false" afterPath="$PROJECT_DIR$/Velocity/src/main/java/net/villagerzock/velocity/service/MatchmakingService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradlew" beforeDir="false" afterPath="$PROJECT_DIR$/gradlew" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <task path="$PROJECT_DIR$">
+          <activation />
+        </task>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="CloudCore" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="CloudCore" type="f1a62948:ProjectNode" />
+                <item name="Core" type="2d1252cf:ModuleNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="CloudCore" type="f1a62948:ProjectNode" />
+                <item name="Core" type="2d1252cf:ModuleNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="CloudCore" type="f1a62948:ProjectNode" />
+                <item name="Core" type="2d1252cf:ModuleNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+                <item name="build" type="c8890929:TasksNode$1" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Villagerzock&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Villagerzock/CloudCore.git&quot;,
+    &quot;accountId&quot;: &quot;9989e3ce-0dde-4838-b729-f488635d0de0&quot;
+  }
+}</component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.315686859053322E-86" />
+      <entry key="MS500" value="6.6654658456241596E-18" />
+      <entry key="S2" value="5.087821666685449E-5" />
+      <entry key="S5" value="0.02129258374414352" />
+      <entry key="S10" value="0.21534243677394424" />
+      <entry key="S30" value="1.4141176253244327" />
+      <entry key="S60" value="2.5866342720913735" />
+      <entry key="M2" value="4.114338579638946" />
+      <entry key="M5" value="8.812955741553264" />
+      <entry key="M10" value="18.528475788529217" />
+      <entry key="M15" value="28.93869959449567" />
+      <entry key="M30" value="56.35250707905652" />
+      <entry key="H1" value="89.1272365515377" />
+      <entry key="H2" value="116.60100204254469" />
+      <entry key="H4" value="134.80314117791525" />
+      <entry key="D1" value="152.98244044348525" />
+      <entry key="W1" value="156.4176748126066" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0000000124507402" />
+      <entry key="S5" value="1.0010103337717524" />
+      <entry key="S10" value="1.0446924252961642" />
+      <entry key="S30" value="1.5743661908842235" />
+      <entry key="S60" value="2.221552726847194" />
+      <entry key="M2" value="3.3784474303551875" />
+      <entry key="M5" value="9.28970983355561" />
+      <entry key="M10" value="22.540746511583144" />
+      <entry key="M15" value="36.94016727093772" />
+      <entry key="M30" value="75.63982442701092" />
+      <entry key="H1" value="122.54212619910886" />
+      <entry key="H2" value="161.99852437044942" />
+      <entry key="H4" value="188.1426255506021" />
+      <entry key="D1" value="214.23664953227154" />
+      <entry key="W1" value="219.1647149392424" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.4470724340843265E-12" />
+      <entry key="MS500" value="0.004286452881168916" />
+      <entry key="S2" value="0.2558930638905126" />
+      <entry key="S5" value="0.5951762953852722" />
+      <entry key="S10" value="0.982186441284095" />
+      <entry key="S30" value="2.81199187252632" />
+      <entry key="S60" value="4.685774914482582" />
+      <entry key="M2" value="7.412381098594367" />
+      <entry key="M5" value="18.038273685186972" />
+      <entry key="M10" value="40.9965617915777" />
+      <entry key="M15" value="65.80013403493084" />
+      <entry key="M30" value="131.91324976854102" />
+      <entry key="H1" value="211.60673377199765" />
+      <entry key="H2" value="278.55877453155085" />
+      <entry key="H4" value="322.92231313331354" />
+      <entry key="D1" value="367.21467422395307" />
+      <entry key="W1" value="375.5817453286307" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3FATmvjSHjopWcbIYErLGb2rhkK" />
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{}</component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Gradle.CloudCore [:Core:build].executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="CloudCore [:Core:build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":Core:build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Gradle.CloudCore [:Core:build]" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="5f649ae9-9b81-4a38-8d6a-f657d37a4528" name="Changes" comment="" />
+      <created>1781517036897</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1781517036897</updated>
+      <workItem from="1781517037986" duration="1367000" />
+      <workItem from="1781521641916" duration="26000" />
+      <workItem from="1781591409596" duration="7189000" />
+      <workItem from="1781599886755" duration="693000" />
+      <workItem from="1781610719936" duration="63000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
 </project>
