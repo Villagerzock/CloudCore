@@ -1,0 +1,33 @@
+.textInput {
+    appearance: none;
+    width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    background: var(--code-bg);
+    color: var(--text-h);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    outline: none;
+    font: 0.9rem/1.2 var(--mono);
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.textInput:hover {
+    border-color: var(--border);
+}
+
+.textInput:focus-visible {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.textInput::placeholder {
+    color: var(--text);
+    opacity: 0.75;
+}
+
+.textInput:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}

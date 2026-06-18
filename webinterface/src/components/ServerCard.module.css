@@ -1,0 +1,14 @@
+.card {
+    background-color: var(--accent-bg);
+    border-color: var(--accent-border);
+    border-radius: 8px;
+    border-width: 1px;
+    border-style: solid;
+    padding: 16px;
+    width: fit-content;
+}
+
+.card:hover{
+    background-color: color-mix(in srgb, var(--accent-bg),var(--accent-border) 25%);
+    cursor: pointer;
+}

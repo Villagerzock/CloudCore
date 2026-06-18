@@ -1,0 +1,42 @@
+.container {
+    min-width: 0;
+    min-height: 0;
+    padding: 10px;
+    border-radius: 10px;
+    box-sizing: border-box;
+    background-color: var(--accent-bg);
+    border-style: solid;
+    border-color: var(--accent-border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.console {
+    background-color: var(--code-bg);
+    text-align: left;
+    font-family:
+        "JetBrains Mono",
+        "Cascadia Code",
+        "Consolas",
+        monospace;
+    font-kerning: none;
+    width: 100%;
+    flex: 1;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+.ansi {
+    display: block;
+    padding: 0;
+    background: transparent;
+    font: inherit;
+    white-space: pre;
+}
+
+.commandForm {
+    width: 100%;
+    margin: 0;
+}

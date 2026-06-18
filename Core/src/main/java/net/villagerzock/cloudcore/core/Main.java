@@ -360,7 +360,6 @@ public class Main {
                         if ("handle".equals(method.getName())) {
                             LanternaUi.handleExternalInterrupt();
                         }
-
                         return null;
                     }
             );

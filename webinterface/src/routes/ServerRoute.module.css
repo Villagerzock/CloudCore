@@ -1,0 +1,29 @@
+.server {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    gap: 1em;
+    padding: 1em;
+}
+
+.stats {
+    display: flex;
+    flex-direction: column;
+    width: 350px;
+    border-radius: 16px;
+    border-style: solid;
+    border-color: var(--accent-border);
+    background-color: var(--accent-bg);
+    padding: 15px;
+    gap: 16px;
+}
+
+.console {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}

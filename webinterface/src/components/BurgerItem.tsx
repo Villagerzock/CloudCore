@@ -1,6 +1,6 @@
 import styles from "./BurgerItem.module.css"
 import * as React from "react";
-import {useNavigate} from "react-router";
+import {useLocation, useNavigate} from "react-router";
 
 export type BurgerItemProps = {
     children :
@@ -11,12 +11,13 @@ export type BurgerItemProps = {
 
 function BurgerItem({ children, route } : BurgerItemProps) {
     const navigate = useNavigate();
+    const location = useLocation();
     function goto(){
         navigate(route)
     }
     return (
         <>
-            <div className={styles.item} onClick={goto}>
+            <div className={`${styles.item} ${location.pathname === route ? styles.selected : ""}`} onClick={goto}>
                 {children}
             </div>
         </>

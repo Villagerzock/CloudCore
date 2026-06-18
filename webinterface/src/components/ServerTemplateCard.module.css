@@ -1,0 +1,7 @@
+.card {
+    width: fit-content;
+    padding: 16px;
+    background-color: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+}

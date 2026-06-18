@@ -9,16 +9,16 @@
     transition: translate 200ms;
 }
 .base {
-    grid-area: "burger";
     background-color: var(--bg);
     border-right-style: solid;
     border-color: var(--border);
     border-width: 1px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
     height: 100%;
     width: 300px;
     min-width: 300px;
     padding: 0.5em;
+    box-sizing: border-box;
+    overflow: auto;
 }
