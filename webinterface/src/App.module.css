@@ -1,0 +1,10 @@
+.content {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    min-height: 100%;
+    flex: 1;
+}
+.outlet {
+    flex: 1;
+}

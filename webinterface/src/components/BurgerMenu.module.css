@@ -1,0 +1,24 @@
+.open {
+    position: relative;
+    translate: 0 0;
+    transition: translate 200ms;
+}
+.close {
+    position: absolute;
+    translate: -101% 0;
+    transition: translate 200ms;
+}
+.base {
+    grid-area: "burger";
+    background-color: var(--bg);
+    border-right-style: solid;
+    border-color: var(--border);
+    border-width: 1px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    width: 300px;
+    min-width: 300px;
+    padding: 0.5em;
+}

@@ -1,0 +1,16 @@
+.header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 50px;
+    border-bottom-style: solid;
+    border-color: var(--accent-border);
+    border-width: 1px;
+}
+.left {
+    display: flex;
+    flex-direction: row;
+}
+.right {
+    display: flex;
+    flex-direction: row-reverse;
+}

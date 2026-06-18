@@ -1,0 +1,18 @@
+.item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 2em;
+    border-radius: 8px;
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--border);
+    width: 100%;
+    padding-left: 16px;
+    box-sizing: border-box;
+    gap: 6px;
+}
+.item:hover{
+    background-color: var(--accent-bg);
+    cursor: pointer;
+}
