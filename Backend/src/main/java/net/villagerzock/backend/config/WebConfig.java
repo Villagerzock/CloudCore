@@ -10,6 +10,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")
-                .allowedMethods("GET");
+                .allowedMethods("GET", "POST")
+                .allowedHeaders("Content-Type", "Authorization", "X-CloudCore-Instance-Id");
     }
 }
