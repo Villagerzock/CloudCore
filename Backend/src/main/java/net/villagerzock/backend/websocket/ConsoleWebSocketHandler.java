@@ -8,6 +8,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import tools.jackson.databind.ObjectMapper;
@@ -38,9 +39,21 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        Long nodeId = getNodeId(session.getUri());
+        if (nodeId == null) {
+            send(session, new ConsoleMessage("system", java.util.List.of(
+                    "WebSocket query parameter 'node' is required")));
+            return;
+        }
+
         String consoleKey = session.getId() + ':' + request.console();
         if (initializedConsoles.add(consoleKey)) {
-            send(session, new ConsoleMessage(request.console(), consoleService.getWelcomeLines(request.console())));
+            try {
+                send(session, new ConsoleMessage(request.console(), consoleService.getLogs(nodeId, request.console())));
+            } catch (RuntimeException exception) {
+                send(session, new ConsoleMessage("system", java.util.List.of(exception.getMessage())));
+                return;
+            }
         }
         if (request.subscribe()) {
             return;
@@ -49,9 +62,13 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
             send(session, new ConsoleMessage(request.console(), java.util.List.of("Command is required")));
             return;
         }
-        send(session, new ConsoleMessage(
-                request.console(),
-                consoleService.execute(request.console(), request.command().trim())));
+        try {
+            send(session, new ConsoleMessage(
+                    request.console(),
+                    consoleService.execute(nodeId, request.console(), request.command().trim())));
+        } catch (RuntimeException exception) {
+            send(session, new ConsoleMessage("system", java.util.List.of(exception.getMessage())));
+        }
     }
 
     @Override
@@ -61,5 +78,23 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
 
     private void send(WebSocketSession session, ConsoleMessage response) throws IOException {
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+    }
+
+    private Long getNodeId(URI uri) {
+        if (uri == null || uri.getRawQuery() == null) {
+            return null;
+        }
+        for (String parameter : uri.getRawQuery().split("&")) {
+            String[] parts = parameter.split("=", 2);
+            if (parts.length == 2 && "node".equals(parts[0])) {
+                try {
+                    long nodeId = Long.parseLong(parts[1]);
+                    return nodeId > 0 ? nodeId : null;
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 }

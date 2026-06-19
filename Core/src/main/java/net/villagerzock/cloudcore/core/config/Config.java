@@ -26,6 +26,9 @@ public class Config {
     @Getter
     public LobbyConfig lobby = new LobbyConfig();
 
+    @Getter
+    public boolean useWebPanel = true;
+
     public void save() {
         Path path = ServerManager.BASE_DIR.resolve("config.yml");
         DumperOptions options = new DumperOptions();

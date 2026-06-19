@@ -24,6 +24,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.38")
     annotationProcessor("org.projectlombok:lombok:1.18.38")
     implementation("com.github.Querz:NBT:6.1")
+    implementation(project(":CoreHandshake"))
 }
 
 tasks.test {

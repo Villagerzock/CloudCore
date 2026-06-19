@@ -9,6 +9,7 @@ import net.villagerzock.cloudcore.core.config.Config;
 import net.villagerzock.cloudcore.core.server.ProxyServerManager;
 import net.villagerzock.cloudcore.core.server.ServerManager;
 import net.villagerzock.cloudcore.core.ui.LanternaUi;
+import net.villagerzock.corehandshake.CoreHandshakeInitializer;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.ArgGroupSpec;
 import picocli.CommandLine.Model.CommandSpec;
@@ -310,6 +311,14 @@ public class Main {
                 }, "communication");
 
                 communication.start();
+
+                if (Config.getInstance().isUseWebPanel()){
+                    Thread webPanelConnection = new Thread(()->{
+                        try {
+                            CoreHandshakeInitializer.start()
+                        }
+                    }, "web-panel-connection");
+                }
                 ServerManager.init();
             });
 

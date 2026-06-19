@@ -16,7 +16,12 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(nodeSelectionInterceptor)
-                .addPathPatterns("/api/servers/**", "/api/templates/**", "/api/proxy/**");
+                .addPathPatterns(
+                        "/api/servers/**",
+                        "/api/templates/**",
+                        "/api/proxy/**",
+                        "/api/metadata/**",
+                        "/api/console/**");
     }
 
     @Override

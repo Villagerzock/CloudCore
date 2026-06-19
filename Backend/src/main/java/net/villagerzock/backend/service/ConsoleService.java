@@ -2,25 +2,27 @@ package net.villagerzock.backend.service;
 
 import org.springframework.stereotype.Service;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 public class ConsoleService {
-    public List<String> getWelcomeLines(String console) {
-        return List.of(
-                "\u001b[1;32mCloudCore live console\u001b[0m",
-                "Connected to " + console + ". Enter a command."
-        );
+    private final NodeHandshakeClient handshakeClient;
+
+    public ConsoleService(NodeHandshakeClient handshakeClient) {
+        this.handshakeClient = handshakeClient;
     }
 
-    public List<String> execute(String console, String command) {
-        String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        return List.of(
-                "> " + command,
-                "\u001b[2m" + timestamp + "\u001b[0m \u001b[32mINFO\u001b[0m [" + console
-                        + "] Dummy service accepted command: " + command
-        );
+    public List<String> getLogs(long nodeId, String console) {
+        if ("proxy".equalsIgnoreCase(console)) {
+            return handshakeClient.getProxyLogs(nodeId);
+        }
+        return handshakeClient.getServerLogs(nodeId, console);
+    }
+
+    public List<String> execute(long nodeId, String console, String command) {
+        if ("proxy".equalsIgnoreCase(console)) {
+            return handshakeClient.executeProxyCommand(nodeId, command);
+        }
+        return handshakeClient.executeServerCommand(nodeId, console, command);
     }
 }

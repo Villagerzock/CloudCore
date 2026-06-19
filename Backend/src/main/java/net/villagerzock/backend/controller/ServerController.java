@@ -8,6 +8,7 @@ import net.villagerzock.backend.service.ServerService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,25 +27,31 @@ public class ServerController {
     }
 
     @GetMapping
-    public List<ServerDto> getRunningServers() {
-        return serverService.getRunningServers();
+    public List<ServerDto> getRunningServers(@RequestAttribute("cloudcore.nodeId") long nodeId) {
+        return serverService.getRunningServers(nodeId);
     }
 
     @GetMapping("/{id}")
-    public ServerDto getServerById(@PathVariable long id) {
-        return serverService.getServerById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Server " + id + " not found"));
+    public ServerDto getServerById(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @PathVariable long id
+    ) {
+        return serverService.getServerById(nodeId, id);
     }
 
     @GetMapping("/{id}/metrics/player-count")
-    public List<ChartPointDto> getPlayerCount(@PathVariable long id) {
-        return metricsService.getServerPlayerCount(id);
+    public List<ChartPointDto> getPlayerCount(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @PathVariable long id
+    ) {
+        return metricsService.getServerPlayerCount(nodeId, id);
     }
 
     @GetMapping("/{id}/metrics/network")
-    public List<NetworkPointDto> getNetwork(@PathVariable long id) {
-        return metricsService.getServerNetwork(id);
+    public List<NetworkPointDto> getNetwork(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @PathVariable long id
+    ) {
+        return metricsService.getServerNetwork(nodeId, id);
     }
 }
