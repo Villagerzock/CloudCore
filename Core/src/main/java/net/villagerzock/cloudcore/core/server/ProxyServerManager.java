@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
 
 public class ProxyServerManager {
     private static final ProxyServerManager INSTANCE = new ProxyServerManager();
@@ -22,6 +23,9 @@ public class ProxyServerManager {
     private int port;
 
     private static final Gson GSON = new Gson();
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(3))
+            .build();
 
     public void register(String name, String base, String host, int port) {
         send(
@@ -85,9 +89,10 @@ public class ProxyServerManager {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://" + host + ":" + port + path))
+                    .timeout(Duration.ofSeconds(5))
                     .GET()
                     .build();
-            HttpResponse<String> response = HttpClient.newHttpClient()
+            HttpResponse<String> response = HTTP_CLIENT
                     .send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new RuntimeException(

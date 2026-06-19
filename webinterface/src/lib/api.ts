@@ -14,6 +14,7 @@ export type NetworkData = ChartData & {
 
 export type PlayerMetricRange = "days" | "hours";
 export type NetworkMetricRange = "days" | "minutes";
+type MetricRange = PlayerMetricRange | NetworkMetricRange;
 
 export type Server = {
     name: string;
@@ -140,11 +141,13 @@ export function getNodes(): Promise<Node[]> {
 }
 
 export function getProxyPlayerCountData(range: PlayerMetricRange): Promise<PlayerCountData[]> {
-    return getJson(`/proxy/metrics/player-count?range=${range}`);
+    return getJson<PlayerCountData[]>(`/proxy/metrics/player-count?range=${range}`)
+        .then(points => localizeMetricKeys(points, range));
 }
 
 export function getProxyNetworkData(range: NetworkMetricRange): Promise<NetworkData[]> {
-    return getJson(`/proxy/metrics/network?range=${range}`);
+    return getJson<NetworkData[]>(`/proxy/metrics/network?range=${range}`)
+        .then(points => localizeMetricKeys(points, range));
 }
 
 export function getRunningServers(): Promise<Server[]> {
@@ -156,7 +159,8 @@ export function getServerByName(name: string): Promise<Server> {
 }
 
 export function getServerPlayerCountData(name: string): Promise<PlayerCountData[]> {
-    return getJson(`/servers/${encodeURIComponent(name)}/metrics/player-count`);
+    return getJson<PlayerCountData[]>(`/servers/${encodeURIComponent(name)}/metrics/player-count`)
+        .then(points => localizeMetricKeys(points, "minutes"));
 }
 
 export function getServerNetworkData(name: string): Promise<NetworkData[]> {
@@ -165,4 +169,19 @@ export function getServerNetworkData(name: string): Promise<NetworkData[]> {
 
 export function getServerTemplates(): Promise<ServerTemplate[]> {
     return getJson("/templates");
+}
+
+function localizeMetricKeys<T extends ChartData>(points: T[], range: MetricRange): T[] {
+    const options: Intl.DateTimeFormatOptions = range === "days"
+        ? {day: "2-digit", month: "2-digit", year: "numeric"}
+        : {hour: "2-digit", minute: "2-digit", hourCycle: "h23"};
+    const formatter = new Intl.DateTimeFormat(undefined, options);
+
+    return points.map(point => {
+        const instant = new Date(point.key);
+        return {
+            ...point,
+            key: Number.isNaN(instant.getTime()) ? point.key : formatter.format(instant)
+        };
+    });
 }

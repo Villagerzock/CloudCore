@@ -352,6 +352,7 @@ public class Main {
             ServerManager.shutdown();
 
             ApiServer.stop();
+            CoreHandshakeInitializer.stop();
             LanternaUi.restoreTerminal();
         }
 

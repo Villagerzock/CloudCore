@@ -13,12 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Duration;
 
 @Service
 public class NodeHandshakeClient {
@@ -194,7 +196,15 @@ public class NodeHandshakeClient {
                 .path("/core-handshake/v1")
                 .build()
                 .toUriString();
-        return restClientBuilder.clone().baseUrl(baseUrl).build();
+        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        return restClientBuilder.clone()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
     }
 
     private String resolveHost(String ipAddress) {

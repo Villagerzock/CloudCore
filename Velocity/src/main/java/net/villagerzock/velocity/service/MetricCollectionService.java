@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -26,12 +25,6 @@ public class MetricCollectionService {
     private static final long MEBIBYTE = 1024L * 1024L;
     private static final Path RX_BYTES = Path.of("/sys/class/net/eth0/statistics/rx_bytes");
     private static final Path TX_BYTES = Path.of("/sys/class/net/eth0/statistics/tx_bytes");
-    private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-            .withZone(ZoneOffset.UTC);
-    private static final DateTimeFormatter HOUR_FORMAT = DateTimeFormatter.ofPattern("HH:00")
-            .withZone(ZoneOffset.UTC);
-    private static final DateTimeFormatter MINUTE_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
-            .withZone(ZoneOffset.UTC);
 
     private final ProxyServer proxy;
     private final MetricBucketRepository buckets;
@@ -82,7 +75,7 @@ public class MetricCollectionService {
         return buckets.findByScopeAndMetricAndResolutionAndBucketStartGreaterThanEqualOrderByBucketStart(
                         scope, PLAYERS, resolution, from).stream()
                 .map(bucket -> new PlayerMetricPoint(
-                        format(bucket.getBucketStart(), resolution),
+                        bucket.getBucketStart().toString(),
                         bucket.getPlayerMax() == null ? 0 : bucket.getPlayerMax()))
                 .toList();
     }
@@ -97,7 +90,7 @@ public class MetricCollectionService {
         return buckets.findByScopeAndMetricAndResolutionAndBucketStartGreaterThanEqualOrderByBucketStart(
                         PROXY, NETWORK, resolution, from).stream()
                 .map(bucket -> new NetworkMetricPoint(
-                        format(bucket.getBucketStart(), resolution),
+                        bucket.getBucketStart().toString(),
                         bytesToMb(bucket.getInboundBytes()),
                         bytesToMb(bucket.getOutboundBytes())))
                 .toList();
@@ -147,15 +140,6 @@ public class MetricCollectionService {
 
     private Instant dayStart(Instant instant) {
         return instant.atZone(ZoneOffset.UTC).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant();
-    }
-
-    private String format(Instant instant, String resolution) {
-        return switch (resolution) {
-            case "days" -> DAY_FORMAT.format(instant);
-            case "hours" -> HOUR_FORMAT.format(instant);
-            case "minutes" -> MINUTE_FORMAT.format(instant);
-            default -> throw new IllegalArgumentException("Unsupported resolution");
-        };
     }
 
     private double bytesToMb(Long bytes) {

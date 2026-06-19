@@ -15,12 +15,15 @@
 .console {
     background-color: var(--code-bg);
     text-align: left;
+    font-size: 0.9em;
+    line-height: 145%;
     font-family:
         "JetBrains Mono",
         "Cascadia Code",
         "Consolas",
         monospace;
     font-kerning: none;
+
     width: 100%;
     flex: 1;
     margin: 0;

@@ -5,6 +5,7 @@ import org.springframework.boot.ApplicationContextFactory;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.web.server.servlet.context.AnnotationConfigServletWebServerApplicationContext;
 
@@ -15,6 +16,8 @@ public final class CoreHandshakeInitializer {
     private CoreHandshakeInitializer() {
     }
 
+    private static ConfigurableApplicationContext runningSpring = null;
+
     public static void start(CoreHandshakeProvider provider) {
         CoreHandshakeProvider requiredProvider = Objects.requireNonNull(provider, "provider");
         SpringApplication application = new SpringApplication(BootstrapConfiguration.class);
@@ -24,7 +27,13 @@ public final class CoreHandshakeInitializer {
         application.setDefaultProperties(Map.of("spring.output.ansi.enabled", "never"));
         application.addInitializers(context -> context.getBeanFactory()
                 .registerSingleton("coreHandshakeProvider", requiredProvider));
-        application.run();
+        runningSpring = application.run();
+    }
+
+    public static void stop() {
+        if (runningSpring != null){
+            runningSpring.stop();
+        }
     }
 
     @SpringBootConfiguration(proxyBeanMethods = false)
