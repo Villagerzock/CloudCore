@@ -12,6 +12,9 @@ export type NetworkData = ChartData & {
     outbound: number;
 }
 
+export type PlayerMetricRange = "days" | "hours";
+export type NetworkMetricRange = "days" | "minutes";
+
 export type Server = {
     name: string;
     template: string;
@@ -136,12 +139,12 @@ export function getNodes(): Promise<Node[]> {
     return getJson("/nodes", false);
 }
 
-export function getProxyPlayerCountData(): Promise<PlayerCountData[]> {
-    return getJson("/proxy/metrics/player-count");
+export function getProxyPlayerCountData(range: PlayerMetricRange): Promise<PlayerCountData[]> {
+    return getJson(`/proxy/metrics/player-count?range=${range}`);
 }
 
-export function getProxyNetworkData(): Promise<NetworkData[]> {
-    return getJson("/proxy/metrics/network");
+export function getProxyNetworkData(range: NetworkMetricRange): Promise<NetworkData[]> {
+    return getJson(`/proxy/metrics/network?range=${range}`);
 }
 
 export function getRunningServers(): Promise<Server[]> {

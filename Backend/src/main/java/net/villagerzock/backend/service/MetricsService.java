@@ -3,6 +3,8 @@ package net.villagerzock.backend.service;
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.NetworkPointDto;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -14,12 +16,14 @@ public class MetricsService {
         this.handshakeClient = handshakeClient;
     }
 
-    public List<ChartPointDto> getProxyPlayerCount(long nodeId) {
-        return handshakeClient.getProxyPlayerCount(nodeId);
+    public List<ChartPointDto> getProxyPlayerCount(long nodeId, String range) {
+        requireRange(range, "days", "hours");
+        return handshakeClient.getProxyPlayerCount(nodeId, range);
     }
 
-    public List<NetworkPointDto> getProxyNetwork(long nodeId) {
-        return handshakeClient.getProxyNetwork(nodeId);
+    public List<NetworkPointDto> getProxyNetwork(long nodeId, String range) {
+        requireRange(range, "days", "minutes");
+        return handshakeClient.getProxyNetwork(nodeId, range);
     }
 
     public List<ChartPointDto> getServerPlayerCount(long nodeId, String serverName) {
@@ -28,5 +32,13 @@ public class MetricsService {
 
     public List<NetworkPointDto> getServerNetwork(long nodeId, String serverName) {
         return handshakeClient.getServerNetwork(nodeId, serverName);
+    }
+
+    private void requireRange(String range, String first, String second) {
+        if (!first.equals(range) && !second.equals(range)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Range must be " + first + " or " + second);
+        }
     }
 }

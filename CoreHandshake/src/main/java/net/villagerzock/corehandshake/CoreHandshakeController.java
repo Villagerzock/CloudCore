@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -74,13 +75,25 @@ public class CoreHandshakeController {
     }
 
     @GetMapping("/proxy/metrics/player-count")
-    public List<ChartPoint> getProxyPlayerCount() {
-        return provider.getProxyPlayerCount();
+    public List<ChartPoint> getProxyPlayerCount(
+            @RequestParam(defaultValue = "days") String range
+    ) {
+        MetricRange metricRange = MetricRange.parse(range);
+        if (metricRange != MetricRange.DAYS && metricRange != MetricRange.HOURS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Player range must be days or hours");
+        }
+        return provider.getProxyPlayerCount(metricRange);
     }
 
     @GetMapping("/proxy/metrics/network")
-    public List<NetworkPoint> getProxyNetwork() {
-        return provider.getProxyNetwork();
+    public List<NetworkPoint> getProxyNetwork(
+            @RequestParam(defaultValue = "days") String range
+    ) {
+        MetricRange metricRange = MetricRange.parse(range);
+        if (metricRange != MetricRange.DAYS && metricRange != MetricRange.MINUTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Network range must be days or minutes");
+        }
+        return provider.getProxyNetwork(metricRange);
     }
 
     @GetMapping("/servers/{serverName}/metrics/player-count")

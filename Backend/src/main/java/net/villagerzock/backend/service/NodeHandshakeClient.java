@@ -77,12 +77,12 @@ public class NodeHandshakeClient {
         return get(nodeId, "/metadata", NodeMetadataDto.class);
     }
 
-    public List<ChartPointDto> getProxyPlayerCount(long nodeId) {
-        return get(nodeId, "/proxy/metrics/player-count", CHART_LIST);
+    public List<ChartPointDto> getProxyPlayerCount(long nodeId, String range) {
+        return get(nodeId, "/proxy/metrics/player-count?range=" + range, CHART_LIST);
     }
 
-    public List<NetworkPointDto> getProxyNetwork(long nodeId) {
-        return get(nodeId, "/proxy/metrics/network", NETWORK_LIST);
+    public List<NetworkPointDto> getProxyNetwork(long nodeId, String range) {
+        return get(nodeId, "/proxy/metrics/network?range=" + range, NETWORK_LIST);
     }
 
     public List<ChartPointDto> getServerPlayerCount(long nodeId, String serverName) {

@@ -1,20 +1,16 @@
 import {useEffect, useState} from "react";
 import {
-    getServerNetworkData,
     getServerPlayerCountData,
-    type NetworkData,
     type PlayerCountData
 } from "../lib/api.ts";
 
 type ServerMetrics = {
     playerCountData: PlayerCountData[];
-    networkData: NetworkData[];
     error: string | null;
 }
 
 export function useServerMetrics(name: string | null): ServerMetrics {
     const [playerCountData, setPlayerCountData] = useState<PlayerCountData[]>([]);
-    const [networkData, setNetworkData] = useState<NetworkData[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -22,12 +18,11 @@ export function useServerMetrics(name: string | null): ServerMetrics {
 
         let cancelled = false;
 
-        Promise.all([getServerPlayerCountData(name), getServerNetworkData(name)])
-            .then(([playerCount, network]) => {
+        getServerPlayerCountData(name)
+            .then((playerCount) => {
                 if (cancelled) return;
 
                 setPlayerCountData(playerCount);
-                setNetworkData(network);
             })
             .catch((reason: unknown) => {
                 if (cancelled) return;
@@ -40,5 +35,5 @@ export function useServerMetrics(name: string | null): ServerMetrics {
         };
     }, [name]);
 
-    return { playerCountData, networkData, error };
+    return { playerCountData, error };
 }

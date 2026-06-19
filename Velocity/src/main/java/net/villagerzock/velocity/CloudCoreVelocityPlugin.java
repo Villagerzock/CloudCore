@@ -8,6 +8,8 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyPingEvent;
 import com.velocitypowered.api.plugin.Plugin;
@@ -20,6 +22,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.villagerzock.velocity.command.arguments.PlayerArgumentType;
 import net.villagerzock.velocity.config.CloudCoreConfiguration;
 import net.villagerzock.velocity.service.MaintenanceService;
+import net.villagerzock.velocity.service.MetricCollectionService;
 import net.villagerzock.velocity.service.ServerMangementService;
 import org.slf4j.Logger;
 import org.springframework.boot.WebApplicationType;
@@ -162,6 +165,22 @@ public class CloudCoreVelocityPlugin {
             return;
         }
         event.setInitialServer(target);
+    }
+
+    @Subscribe
+    public void onPostLogin(PostLoginEvent event) {
+        recordPlayerPeak();
+    }
+
+    @Subscribe
+    public void onServerPostConnect(ServerPostConnectEvent event) {
+        recordPlayerPeak();
+    }
+
+    private void recordPlayerPeak() {
+        if (!isSpringStarting()) {
+            getCachedBeanByType(MetricCollectionService.class).recordPlayerCounts();
+        }
     }
 
     @SuppressWarnings("unchecked")

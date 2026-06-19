@@ -1,8 +1,13 @@
 package net.villagerzock.cloudcore.core.api;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import net.villagerzock.cloudcore.core.server.ProxyServerManager;
 import net.villagerzock.cloudcore.core.server.ServerManager;
 import net.villagerzock.cloudcore.core.server.ServerType;
 import net.villagerzock.corehandshake.CoreHandshakeProvider;
+import net.villagerzock.corehandshake.MetricRange;
 import net.villagerzock.corehandshake.dto.*;
 
 import java.io.File;
@@ -16,8 +21,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.net.URLEncoder;
 
 public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
+    private static final Gson GSON = new Gson();
+
     @Override
     public List<ServerInfo> getRunningServers() {
         return ServerManager.getRunningServers().values().stream().map(CoreHandshakeMapper::runningToInfo).toList();
@@ -75,18 +83,29 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
     }
 
     @Override
-    public List<ChartPoint> getProxyPlayerCount() {
-        return List.of();
+    public List<ChartPoint> getProxyPlayerCount(MetricRange range) {
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().get(
+                        "/api/metrics/proxy/player-count?range=" + range.queryValue()),
+                new TypeToken<List<ChartPoint>>() {}.getType());
     }
 
     @Override
-    public List<NetworkPoint> getProxyNetwork() {
-        return List.of();
+    public List<NetworkPoint> getProxyNetwork(MetricRange range) {
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().get(
+                        "/api/metrics/proxy/network?range=" + range.queryValue()),
+                new TypeToken<List<NetworkPoint>>() {}.getType());
     }
 
     @Override
     public List<ChartPoint> getServerPlayerCount(String serverName) {
-        return List.of();
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().get(
+                        "/api/metrics/servers/"
+                                + URLEncoder.encode(serverName, StandardCharsets.UTF_8)
+                                + "/player-count"),
+                new TypeToken<List<ChartPoint>>() {}.getType());
     }
 
     @Override

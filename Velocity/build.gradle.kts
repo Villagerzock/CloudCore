@@ -42,6 +42,8 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok")
 
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    testImplementation("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    testRuntimeOnly("com.h2database:h2")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 }
 

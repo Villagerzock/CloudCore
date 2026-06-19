@@ -1,4 +1,4 @@
 package net.villagerzock.backend.dto;
 
-public record NetworkPointDto(String key, long inbound, long outbound) {
+public record NetworkPointDto(String key, double inbound, double outbound) {
 }

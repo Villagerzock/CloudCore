@@ -37,10 +37,10 @@ class ApiContractTests {
                 new ServerDto("survival-1", "survival", 42, 100));
         when(handshakeClient.getTemplates(1)).thenReturn(List.of(
                 new ServerTemplateDto("lobby", "paper", "1.21.11")));
-        when(handshakeClient.getProxyPlayerCount(1)).thenReturn(List.of(
+        when(handshakeClient.getProxyPlayerCount(1, "days")).thenReturn(List.of(
                 new ChartPointDto("01.06.2026", 153)));
         when(handshakeClient.getServerNetwork(1, "lobby-1")).thenReturn(List.of(
-                new NetworkPointDto("01.06.2026", 250, 125)));
+                new NetworkPointDto("01.06.2026", 250.0, 125.0)));
         ServerService serverService = new ServerService(handshakeClient);
         MetricsService metricsService = new MetricsService(handshakeClient);
         mockMvc = MockMvcBuilders.standaloneSetup(

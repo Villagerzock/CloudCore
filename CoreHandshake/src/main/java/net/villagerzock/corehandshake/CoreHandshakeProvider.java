@@ -29,9 +29,9 @@ public interface CoreHandshakeProvider {
 
     NodeMetadata getMetadata();
 
-    List<ChartPoint> getProxyPlayerCount();
+    List<ChartPoint> getProxyPlayerCount(MetricRange range);
 
-    List<NetworkPoint> getProxyNetwork();
+    List<NetworkPoint> getProxyNetwork(MetricRange range);
 
     List<ChartPoint> getServerPlayerCount(String serverName);
 

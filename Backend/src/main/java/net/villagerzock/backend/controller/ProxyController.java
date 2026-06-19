@@ -6,6 +6,7 @@ import net.villagerzock.backend.service.MetricsService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,12 +21,18 @@ public class ProxyController {
     }
 
     @GetMapping("/player-count")
-    public List<ChartPointDto> getPlayerCount(@RequestAttribute("cloudcore.nodeId") long nodeId) {
-        return metricsService.getProxyPlayerCount(nodeId);
+    public List<ChartPointDto> getPlayerCount(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @RequestParam(defaultValue = "days") String range
+    ) {
+        return metricsService.getProxyPlayerCount(nodeId, range);
     }
 
     @GetMapping("/network")
-    public List<NetworkPointDto> getNetwork(@RequestAttribute("cloudcore.nodeId") long nodeId) {
-        return metricsService.getProxyNetwork(nodeId);
+    public List<NetworkPointDto> getNetwork(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @RequestParam(defaultValue = "days") String range
+    ) {
+        return metricsService.getProxyNetwork(nodeId, range);
     }
 }

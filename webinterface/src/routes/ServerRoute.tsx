@@ -9,7 +9,7 @@ import styles from "./ServerRoute.module.css";
 function ServerRoute(){
     const { name } = useParams<{ name: string }>();
     const serverName = name?.trim() || null;
-    const { playerCountData, networkData, error: metricsError } = useServerMetrics(serverName);
+    const { playerCountData, error: metricsError } = useServerMetrics(serverName);
     const [result, setResult] = useState<{
         name: string;
         server: Server | null;
@@ -69,21 +69,6 @@ function ServerRoute(){
                     data={playerCountData}
                     keyName="Online"
                     title="Playercount"
-                    width={350}
-                    height={175}
-                />
-                <LineChart
-                    data={networkData}
-                    dataKey="inbound"
-                    keyName="Inbound"
-                    additionalLines={[
-                        {
-                            dataKey: "outbound",
-                            name: "Outbound",
-                            color: "#22c55e"
-                        }
-                    ]}
-                    title="Network"
                     width={350}
                     height={175}
                 />

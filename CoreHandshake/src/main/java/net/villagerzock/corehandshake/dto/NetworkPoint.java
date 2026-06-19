@@ -1,4 +1,4 @@
 package net.villagerzock.corehandshake.dto;
 
-public record NetworkPoint(String key, long inbound, long outbound) {
+public record NetworkPoint(String key, double inbound, double outbound) {
 }

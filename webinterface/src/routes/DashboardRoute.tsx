@@ -7,7 +7,7 @@ import {useProxyMetrics} from "../hooks/useProxyMetrics.ts";
 
 
 function DashboardRoute(){
-    const { playerCountData, networkData, error } = useProxyMetrics();
+    const { playerCountData, networkData, error } = useProxyMetrics("days", "days");
 
     return (
         <>
@@ -24,11 +24,11 @@ function DashboardRoute(){
                 <LineChart
                     data={networkData}
                     dataKey={"inbound"}
-                    keyName={"Inbound"}
+                    keyName={"Inbound (MB)"}
                     additionalLines={[
                         {
                             dataKey: "outbound",
-                            name: "Outbound",
+                            name: "Outbound (MB)",
                             color: "#22c55e"
                         }
                     ]}
