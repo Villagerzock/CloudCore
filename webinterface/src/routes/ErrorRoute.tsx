@@ -1,9 +1,13 @@
-import {isRouteErrorResponse, useRouteError} from "react-router";
+import {isRouteErrorResponse, Navigate, useRouteError} from "react-router";
 import type {JSX} from "react";
 
 function ErrorRoute() : JSX.Element{
     const error = useRouteError();
     if (isRouteErrorResponse(error)){
+        if (error.status === 401) {
+            return <Navigate to="/login" replace/>;
+        }
+
         return (
             <>
                 <h1>{error.status}</h1>

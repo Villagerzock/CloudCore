@@ -1,12 +1,13 @@
 import type {Server} from "../lib/api.ts";
 import styles from "./ServerCard.module.css";
-import {useNavigate} from "react-router";
+import {useLocation, useNavigate} from "react-router";
 
 
 function ServerCard({ id, name, template, online, max }: Server){
     const navigator = useNavigate();
+    const location = useLocation();
     function navigate(){
-        navigator(`/server/${id}`)
+        navigator({pathname: `/server/${id}`, search: location.search})
     }
     return (
         <div className={styles.card} onClick={navigate}>

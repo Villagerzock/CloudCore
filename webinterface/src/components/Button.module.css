@@ -1,0 +1,18 @@
+.button {
+    &:global(.clear){
+        background-color: transparent;
+        border-style: none;
+    }
+
+    height: 2em;
+    border-radius: 0.2em;
+
+
+    *, & {
+        font-weight: bold;
+    }
+    &:hover {
+        background-color: color-mix(in srgb, transparent, white 25%);
+        cursor: pointer;
+    }
+}

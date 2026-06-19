@@ -13,7 +13,7 @@ function BurgerItem({ children, route } : BurgerItemProps) {
     const navigate = useNavigate();
     const location = useLocation();
     function goto(){
-        navigate(route)
+        navigate({pathname: route, search: location.search})
     }
     return (
         <>

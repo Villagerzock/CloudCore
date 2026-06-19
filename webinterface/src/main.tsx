@@ -8,9 +8,24 @@ import ProxyRoute from "./routes/ProxyRoute.tsx";
 import ServerListRoute from "./routes/ServerListRoute.tsx";
 import ServerRoute from "./routes/ServerRoute.tsx";
 import TemplateListRoute from "./routes/TemplateListRoute.tsx";
+import LoginRoute from "./routes/LoginRoute.tsx";
+import RegisterRoute from "./routes/RegisterRoute.tsx";
+import NodeListRoute from "./routes/NodeListRoute.tsx";
 
 function createRouter(){
     return createBrowserRouter([
+        {
+            path: "/login",
+            element: <LoginRoute/>
+        },
+        {
+            path: "/register",
+            element: <RegisterRoute/>
+        },
+        {
+            path: "/nodes",
+            element: <NodeListRoute/>
+        },
         {
             path:"/",
             element: <App/>,
