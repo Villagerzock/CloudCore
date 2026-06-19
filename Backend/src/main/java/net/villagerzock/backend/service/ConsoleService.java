@@ -19,10 +19,11 @@ public class ConsoleService {
         return handshakeClient.getServerLogs(nodeId, console);
     }
 
-    public List<String> execute(long nodeId, String console, String command) {
+    public void execute(long nodeId, String console, String command) {
         if ("proxy".equalsIgnoreCase(console)) {
-            return handshakeClient.executeProxyCommand(nodeId, command);
+            handshakeClient.executeProxyCommand(nodeId, command);
+            return;
         }
-        return handshakeClient.executeServerCommand(nodeId, console, command);
+        handshakeClient.executeServerCommand(nodeId, console, command);
     }
 }

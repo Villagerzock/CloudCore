@@ -22,11 +22,11 @@ public class MetricsService {
         return handshakeClient.getProxyNetwork(nodeId);
     }
 
-    public List<ChartPointDto> getServerPlayerCount(long nodeId, long serverId) {
-        return handshakeClient.getServerPlayerCount(nodeId, serverId);
+    public List<ChartPointDto> getServerPlayerCount(long nodeId, String serverName) {
+        return handshakeClient.getServerPlayerCount(nodeId, serverName);
     }
 
-    public List<NetworkPointDto> getServerNetwork(long nodeId, long serverId) {
-        return handshakeClient.getServerNetwork(nodeId, serverId);
+    public List<NetworkPointDto> getServerNetwork(long nodeId, String serverName) {
+        return handshakeClient.getServerNetwork(nodeId, serverName);
     }
 }

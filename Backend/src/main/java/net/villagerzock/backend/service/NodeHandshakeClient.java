@@ -44,8 +44,8 @@ public class NodeHandshakeClient {
         return get(nodeId, "/servers", SERVER_LIST);
     }
 
-    public ServerDto getServer(long nodeId, long serverId) {
-        return get(nodeId, "/servers/" + serverId, ServerDto.class);
+    public ServerDto getServer(long nodeId, String serverName) {
+        return get(nodeId, "/servers/{serverName}", serverName, ServerDto.class);
     }
 
     public List<ServerTemplateDto> getTemplates(long nodeId) {
@@ -60,12 +60,12 @@ public class NodeHandshakeClient {
         return get(nodeId, "/servers/{server}/logs", server, STRING_LIST);
     }
 
-    public List<String> executeProxyCommand(long nodeId, String command) {
-        return post(nodeId, "/proxy/commands", command, STRING_LIST);
+    public void executeProxyCommand(long nodeId, String command) {
+        post(nodeId, "/proxy/commands", command);
     }
 
-    public List<String> executeServerCommand(long nodeId, String server, String command) {
-        return post(nodeId, "/servers/{server}/commands", server, command, STRING_LIST);
+    public void executeServerCommand(long nodeId, String server, String command) {
+        post(nodeId, "/servers/{server}/commands", server, command);
     }
 
     public NodeMetadataDto getMetadata(long nodeId) {
@@ -80,12 +80,12 @@ public class NodeHandshakeClient {
         return get(nodeId, "/proxy/metrics/network", NETWORK_LIST);
     }
 
-    public List<ChartPointDto> getServerPlayerCount(long nodeId, long serverId) {
-        return get(nodeId, "/servers/" + serverId + "/metrics/player-count", CHART_LIST);
+    public List<ChartPointDto> getServerPlayerCount(long nodeId, String serverName) {
+        return get(nodeId, "/servers/{serverName}/metrics/player-count", serverName, CHART_LIST);
     }
 
-    public List<NetworkPointDto> getServerNetwork(long nodeId, long serverId) {
-        return get(nodeId, "/servers/" + serverId + "/metrics/network", NETWORK_LIST);
+    public List<NetworkPointDto> getServerNetwork(long nodeId, String serverName) {
+        return get(nodeId, "/servers/{serverName}/metrics/network", serverName, NETWORK_LIST);
     }
 
     private <T> T get(long nodeId, String path, Class<T> responseType) {
@@ -110,6 +110,14 @@ public class NodeHandshakeClient {
             Object uriVariable,
             ParameterizedTypeReference<T> responseType
     ) {
+        try {
+            return client(nodeId).get().uri(path, uriVariable).retrieve().body(responseType);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    private <T> T get(long nodeId, String path, Object uriVariable, Class<T> responseType) {
         try {
             return client(nodeId).get().uri(path, uriVariable).retrieve().body(responseType);
         } catch (RestClientException exception) {
@@ -142,6 +150,30 @@ public class NodeHandshakeClient {
                     .body(new CommandRequest(command))
                     .retrieve()
                     .body(responseType);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    private void post(long nodeId, String path, String command) {
+        try {
+            client(nodeId).post()
+                    .uri(path)
+                    .body(new CommandRequest(command))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    private void post(long nodeId, String path, Object uriVariable, String command) {
+        try {
+            client(nodeId).post()
+                    .uri(path, uriVariable)
+                    .body(new CommandRequest(command))
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (RestClientException exception) {
             throw unavailable(nodeId, exception);
         }

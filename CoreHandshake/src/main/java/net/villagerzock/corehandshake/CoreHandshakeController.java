@@ -8,6 +8,7 @@ import net.villagerzock.corehandshake.dto.NodeMetadata;
 import net.villagerzock.corehandshake.dto.ServerInfo;
 import net.villagerzock.corehandshake.dto.ServerTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,9 +33,9 @@ public class CoreHandshakeController {
         return provider.getRunningServers();
     }
 
-    @GetMapping("/servers/{serverId}")
-    public ServerInfo getServer(@PathVariable long serverId) {
-        return provider.getServer(serverId).orElseThrow(() -> notFound("Server", serverId));
+    @GetMapping("/servers/{serverName}")
+    public ServerInfo getServer(@PathVariable String serverName) {
+        return provider.getServer(serverName).orElseThrow(() -> notFound("Server", serverName));
     }
 
     @GetMapping("/templates")
@@ -47,22 +48,24 @@ public class CoreHandshakeController {
         return provider.getProxyLogs();
     }
 
-    @GetMapping("/servers/{serverId}/logs")
-    public List<String> getServerLogs(@PathVariable String serverId) {
-        return provider.getServerLogs(serverId);
+    @GetMapping("/servers/{serverName}/logs")
+    public List<String> getServerLogs(@PathVariable String serverName) {
+        return provider.getServerLogs(serverName);
     }
 
     @PostMapping("/proxy/commands")
-    public List<String> executeProxyCommand(@Valid @RequestBody CommandRequest request) {
-        return provider.executeProxyCommand(request.command().trim());
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void executeProxyCommand(@Valid @RequestBody CommandRequest request) {
+        provider.executeProxyCommand(request.command().trim());
     }
 
-    @PostMapping("/servers/{serverId}/commands")
-    public List<String> executeServerCommand(
-            @PathVariable String serverId,
+    @PostMapping("/servers/{serverName}/commands")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void executeServerCommand(
+            @PathVariable String serverName,
             @Valid @RequestBody CommandRequest request
     ) {
-        return provider.executeServerCommand(serverId, request.command().trim());
+        provider.executeServerCommand(serverName, request.command().trim());
     }
 
     @GetMapping("/metadata")
@@ -80,17 +83,17 @@ public class CoreHandshakeController {
         return provider.getProxyNetwork();
     }
 
-    @GetMapping("/servers/{serverId}/metrics/player-count")
-    public List<ChartPoint> getServerPlayerCount(@PathVariable long serverId) {
-        return provider.getServerPlayerCount(serverId);
+    @GetMapping("/servers/{serverName}/metrics/player-count")
+    public List<ChartPoint> getServerPlayerCount(@PathVariable String serverName) {
+        return provider.getServerPlayerCount(serverName);
     }
 
-    @GetMapping("/servers/{serverId}/metrics/network")
-    public List<NetworkPoint> getServerNetwork(@PathVariable long serverId) {
-        return provider.getServerNetwork(serverId);
+    @GetMapping("/servers/{serverName}/metrics/network")
+    public List<NetworkPoint> getServerNetwork(@PathVariable String serverName) {
+        return provider.getServerNetwork(serverName);
     }
 
-    private ResponseStatusException notFound(String resource, long id) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, resource + " " + id + " not found");
+    private ResponseStatusException notFound(String resource, String name) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, resource + " " + name + " not found");
     }
 }

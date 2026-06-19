@@ -564,7 +564,7 @@ try = [
     private static final Map<String, Integer> INSTANCE_COUNTERS = new HashMap<>();
     private static final Map<String, RunningServer> RUNNING_SERVERS = new HashMap<>();
 
-    public static String createServer(ServerType serverType, String url, String name, String memory, String worldType, String superflatType, String seed) {
+    public static String createServer(ServerType serverType, String url, String version, String name, String memory, String worldType, String superflatType, String seed) {
         try {
             Path serverDir = TEMPLATES_DIR.resolve(name);
 
@@ -580,6 +580,7 @@ try = [
             ServerConfig cloudCoreConfig = new ServerConfig();
             cloudCoreConfig.type = serverType;
             cloudCoreConfig.memory = parseMemory(memory);
+            cloudCoreConfig.version = version;
 
             try (Writer writer = Files.newBufferedWriter(
                     serverDir.resolve(".cloudcore.conf"),
@@ -678,6 +679,10 @@ try = [
         @Getter
         @Setter
         public long memory;
+
+        @Getter
+        @Setter
+        public String version;
     }
 
     public static CompletableFuture<ServerLaunchResult> launchServer(String name, boolean singleton) {
@@ -842,7 +847,7 @@ try = [
         });
     }
 
-    private static ServerConfig readServerConfig(Path serverDir) {
+    public static ServerConfig readServerConfig(Path serverDir) {
         try {
             Yaml yaml = new Yaml();
 
@@ -1491,6 +1496,7 @@ try = [
             return createServer(
                     ServerType.valueOf(serverType.toUpperCase(Locale.ROOT)),
                     SERVER_TO_VERSION_TO_URL_MAP.get(serverType).get(version),
+                    version,
                     name,
                     memory,
                     worldType,

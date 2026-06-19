@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -31,11 +33,12 @@ public class ConsoleController {
     }
 
     @PostMapping("/{console}/commands")
-    public List<String> execute(
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void execute(
             @RequestAttribute("cloudcore.nodeId") long nodeId,
             @PathVariable String console,
             @Valid @RequestBody CommandRequest request
     ) {
-        return consoleService.execute(nodeId, console, request.command().trim());
+        consoleService.execute(nodeId, console, request.command().trim());
     }
 }

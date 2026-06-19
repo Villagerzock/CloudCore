@@ -31,15 +31,15 @@ class ApiContractTests {
     void setUp() {
         NodeHandshakeClient handshakeClient = mock(NodeHandshakeClient.class);
         when(handshakeClient.getServers(1)).thenReturn(List.of(
-                new ServerDto(1, "lobby-1", "lobby", 15, 20),
-                new ServerDto(2, "survival-1", "survival", 42, 100)));
-        when(handshakeClient.getServer(1, 2)).thenReturn(
-                new ServerDto(2, "survival-1", "survival", 42, 100));
+                new ServerDto("lobby-1", "lobby", 15, 20),
+                new ServerDto("survival-1", "survival", 42, 100)));
+        when(handshakeClient.getServer(1, "survival-1")).thenReturn(
+                new ServerDto("survival-1", "survival", 42, 100));
         when(handshakeClient.getTemplates(1)).thenReturn(List.of(
-                new ServerTemplateDto(1, "lobby", "paper", "1.21.11")));
+                new ServerTemplateDto("lobby", "paper", "1.21.11")));
         when(handshakeClient.getProxyPlayerCount(1)).thenReturn(List.of(
                 new ChartPointDto("01.06.2026", 153)));
-        when(handshakeClient.getServerNetwork(1, 1)).thenReturn(List.of(
+        when(handshakeClient.getServerNetwork(1, "lobby-1")).thenReturn(List.of(
                 new NetworkPointDto("01.06.2026", 250, 125)));
         ServerService serverService = new ServerService(handshakeClient);
         MetricsService metricsService = new MetricsService(handshakeClient);
@@ -54,15 +54,13 @@ class ApiContractTests {
     void exposesRunningServers() throws Exception {
         mockMvc.perform(get("/api/servers").requestAttr("cloudcore.nodeId", 1L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].name").value("lobby-1"));
     }
 
     @Test
-    void exposesSingleServerById() throws Exception {
-        mockMvc.perform(get("/api/servers/2").requestAttr("cloudcore.nodeId", 1L))
+    void exposesSingleServerByName() throws Exception {
+        mockMvc.perform(get("/api/servers/survival-1").requestAttr("cloudcore.nodeId", 1L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.name").value("survival-1"));
 
     }
@@ -81,7 +79,7 @@ class ApiContractTests {
                 .andExpect(jsonPath("$[0].key").value("01.06.2026"))
                 .andExpect(jsonPath("$[0].value").isNumber());
 
-        mockMvc.perform(get("/api/servers/1/metrics/network").requestAttr("cloudcore.nodeId", 1L))
+        mockMvc.perform(get("/api/servers/lobby-1/metrics/network").requestAttr("cloudcore.nodeId", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].inbound").isNumber())
                 .andExpect(jsonPath("$[0].outbound").isNumber());

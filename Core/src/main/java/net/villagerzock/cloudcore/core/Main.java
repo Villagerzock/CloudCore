@@ -1,6 +1,7 @@
 package net.villagerzock.cloudcore.core;
 
 import net.villagerzock.cloudcore.core.api.ApiServer;
+import net.villagerzock.cloudcore.core.api.CoreHandshakeProviderImpl;
 import net.villagerzock.cloudcore.core.command.SuggestionProvider;
 import net.villagerzock.cloudcore.core.command.Suggests;
 import net.villagerzock.cloudcore.core.command.providers.RunningServerProvider;
@@ -313,11 +314,10 @@ public class Main {
                 communication.start();
 
                 if (Config.getInstance().isUseWebPanel()){
-                    Thread webPanelConnection = new Thread(()->{
-                        try {
-                            CoreHandshakeInitializer.start()
-                        }
-                    }, "web-panel-connection");
+                    Thread webPanelConnection = new Thread(
+                            () -> CoreHandshakeInitializer.start(new CoreHandshakeProviderImpl()),
+                            "web-panel-connection");
+                    webPanelConnection.start();
                 }
                 ServerManager.init();
             });

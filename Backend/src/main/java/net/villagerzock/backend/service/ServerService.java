@@ -17,8 +17,8 @@ public class ServerService {
         return handshakeClient.getServers(nodeId);
     }
 
-    public ServerDto getServerById(long nodeId, long serverId) {
-        return handshakeClient.getServer(nodeId, serverId);
+    public ServerDto getServerByName(long nodeId, String serverName) {
+        return handshakeClient.getServer(nodeId, serverName);
     }
 
     public List<ServerTemplateDto> getTemplates(long nodeId) {

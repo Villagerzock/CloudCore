@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface CoreHandshakeProvider {
     List<ServerInfo> getRunningServers();
 
-    Optional<ServerInfo> getServer(long serverId);
+    Optional<ServerInfo> getServer(String serverName);
 
     List<ServerTemplate> getTemplates();
 
@@ -23,9 +23,9 @@ public interface CoreHandshakeProvider {
 
     List<String> getServerLogs(String server);
 
-    List<String> executeProxyCommand(String command);
+    void executeProxyCommand(String command);
 
-    List<String> executeServerCommand(String server, String command);
+    void executeServerCommand(String server, String command);
 
     NodeMetadata getMetadata();
 
@@ -33,7 +33,7 @@ public interface CoreHandshakeProvider {
 
     List<NetworkPoint> getProxyNetwork();
 
-    List<ChartPoint> getServerPlayerCount(long serverId);
+    List<ChartPoint> getServerPlayerCount(String serverName);
 
-    List<NetworkPoint> getServerNetwork(long serverId);
+    List<NetworkPoint> getServerNetwork(String serverName);
 }

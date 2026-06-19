@@ -63,9 +63,7 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         try {
-            send(session, new ConsoleMessage(
-                    request.console(),
-                    consoleService.execute(nodeId, request.console(), request.command().trim())));
+            consoleService.execute(nodeId, request.console(), request.command().trim());
         } catch (RuntimeException exception) {
             send(session, new ConsoleMessage("system", java.util.List.of(exception.getMessage())));
         }

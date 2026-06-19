@@ -31,27 +31,27 @@ public class ServerController {
         return serverService.getRunningServers(nodeId);
     }
 
-    @GetMapping("/{id}")
-    public ServerDto getServerById(
+    @GetMapping("/{name}")
+    public ServerDto getServerByName(
             @RequestAttribute("cloudcore.nodeId") long nodeId,
-            @PathVariable long id
+            @PathVariable String name
     ) {
-        return serverService.getServerById(nodeId, id);
+        return serverService.getServerByName(nodeId, name);
     }
 
-    @GetMapping("/{id}/metrics/player-count")
+    @GetMapping("/{name}/metrics/player-count")
     public List<ChartPointDto> getPlayerCount(
             @RequestAttribute("cloudcore.nodeId") long nodeId,
-            @PathVariable long id
+            @PathVariable String name
     ) {
-        return metricsService.getServerPlayerCount(nodeId, id);
+        return metricsService.getServerPlayerCount(nodeId, name);
     }
 
-    @GetMapping("/{id}/metrics/network")
+    @GetMapping("/{name}/metrics/network")
     public List<NetworkPointDto> getNetwork(
             @RequestAttribute("cloudcore.nodeId") long nodeId,
-            @PathVariable long id
+            @PathVariable String name
     ) {
-        return metricsService.getServerNetwork(nodeId, id);
+        return metricsService.getServerNetwork(nodeId, name);
     }
 }
