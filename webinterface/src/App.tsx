@@ -31,7 +31,7 @@ function App() {
         <ImageButton onClick={toggleBurgerMenu}><FaBars size={"2em"}/></ImageButton>
         <NavLink to={"/nodes"}>Nodes</NavLink>
       </Header>
-      <div className={styles.content}>
+      <div className={`${styles.content} background`}>
         <BurgerMenu is_open={is_open}>
             <BurgerItem route={"/"}>
                 <FaChartArea/>

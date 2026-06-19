@@ -3,53 +3,62 @@ import {useParams} from "react-router";
 import LineChart from "../components/LineChart.tsx";
 import LiveConsole from "../components/LiveConsole.tsx";
 import {useServerMetrics} from "../hooks/useServerMetrics.ts";
-import {getServerById, type Server} from "../lib/api.ts";
+import {getServerByName, type Server} from "../lib/api.ts";
 import styles from "./ServerRoute.module.css";
 
 function ServerRoute(){
-    const { id } = useParams<{ id: string }>();
-    const serverId = id && /^\d+$/.test(id) ? Number(id) : null;
-    const { playerCountData, networkData, error: metricsError } = useServerMetrics(serverId);
-    const [server, setServer] = useState<Server | null>(null);
-    const [serverError, setServerError] = useState<string | null>(null);
+    const { name } = useParams<{ name: string }>();
+    const serverName = name?.trim() || null;
+    const { playerCountData, networkData, error: metricsError } = useServerMetrics(serverName);
+    const [result, setResult] = useState<{
+        name: string;
+        server: Server | null;
+        error: string | null;
+    } | null>(null);
 
     useEffect(() => {
-        if (serverId === null) return;
+        if (serverName === null) return;
 
         let cancelled = false;
-        setServer(null);
-        setServerError(null);
 
-        getServerById(serverId)
-            .then((result) => {
-                if (!cancelled) setServer(result);
+        getServerByName(serverName)
+            .then((server) => {
+                if (!cancelled) setResult({name: serverName, server, error: null});
             })
             .catch((reason: unknown) => {
                 if (cancelled) return;
-                setServerError(reason instanceof Error ? reason.message : "Failed to load server");
+                setResult({
+                    name: serverName,
+                    server: null,
+                    error: reason instanceof Error ? reason.message : "Failed to load server"
+                });
             });
 
         return () => {
             cancelled = true;
         };
-    }, [serverId]);
+    }, [serverName]);
 
-    if (serverId === null) {
-        return <p role="alert">Invalid server ID</p>;
+    if (serverName === null) {
+        return <p role="alert">Invalid server name</p>;
     }
 
-    if (serverError) {
-        return <p role="alert">{serverError}</p>;
+    const currentResult = result?.name === serverName ? result : null;
+
+    if (currentResult?.error) {
+        return <p role="alert">{currentResult.error}</p>;
     }
 
-    if (!server) {
+    if (!currentResult?.server) {
         return <p>Loading server...</p>;
     }
+
+    const server = currentResult.server;
 
     return (
         <div className={styles.server}>
             <div className={styles.console}>
-                <LiveConsole consoleId={server.name}/>
+                <LiveConsole consoleId={`server-${server.name}`}/>
             </div>
             <div className={styles.stats}>
                 <h2>{server.name}</h2>

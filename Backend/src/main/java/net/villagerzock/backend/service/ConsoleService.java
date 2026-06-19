@@ -16,7 +16,7 @@ public class ConsoleService {
         if ("proxy".equalsIgnoreCase(console)) {
             return handshakeClient.getProxyLogs(nodeId);
         }
-        return handshakeClient.getServerLogs(nodeId, console);
+        return handshakeClient.getServerLogs(nodeId, serverName(console));
     }
 
     public void execute(long nodeId, String console, String command) {
@@ -24,6 +24,13 @@ public class ConsoleService {
             handshakeClient.executeProxyCommand(nodeId, command);
             return;
         }
-        handshakeClient.executeServerCommand(nodeId, console, command);
+        handshakeClient.executeServerCommand(nodeId, serverName(console), command);
+    }
+
+    private String serverName(String console) {
+        if (!console.startsWith("server-") || console.length() == "server-".length()) {
+            throw new IllegalArgumentException("Console must be 'proxy' or 'server-{server-name}'");
+        }
+        return console.substring("server-".length());
     }
 }

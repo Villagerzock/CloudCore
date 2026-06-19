@@ -12,17 +12,17 @@ type ServerMetrics = {
     error: string | null;
 }
 
-export function useServerMetrics(id: number | null): ServerMetrics {
+export function useServerMetrics(name: string | null): ServerMetrics {
     const [playerCountData, setPlayerCountData] = useState<PlayerCountData[]>([]);
     const [networkData, setNetworkData] = useState<NetworkData[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (id === null) return;
+        if (name === null) return;
 
         let cancelled = false;
 
-        Promise.all([getServerPlayerCountData(id), getServerNetworkData(id)])
+        Promise.all([getServerPlayerCountData(name), getServerNetworkData(name)])
             .then(([playerCount, network]) => {
                 if (cancelled) return;
 
@@ -38,7 +38,7 @@ export function useServerMetrics(id: number | null): ServerMetrics {
         return () => {
             cancelled = true;
         };
-    }, [id]);
+    }, [name]);
 
     return { playerCountData, networkData, error };
 }

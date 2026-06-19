@@ -31,4 +31,18 @@ public interface CloudCoreNodeRepository extends JpaRepository<CloudCoreNode, Lo
 
     @Query("select node.server.ipAddress from CloudCoreNode node where node.id = :nodeId")
     Optional<String> findIpAddressById(@Param("nodeId") Long nodeId);
+
+    @Query("""
+            select node.id from CloudCoreNode node
+            where node.server.ipAddress = :ipAddress
+              and node.server.linked = true
+            """)
+    List<Long> findLinkedNodeIdsByIpAddress(@Param("ipAddress") String ipAddress);
+
+    @Query("""
+            select node.id from CloudCoreNode node
+            where node.server.ipAddress in ('127.0.0.1', '0:0:0:0:0:0:0:1', '::1')
+              and node.server.linked = true
+            """)
+    List<Long> findLinkedLoopbackNodeIds();
 }

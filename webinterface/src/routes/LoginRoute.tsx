@@ -26,7 +26,7 @@ function LoginRoute(){
     }
 
     return (
-        <main className={styles.page}>
+        <main className={`${styles.page} background`}>
             <div className={styles.content}>
             <RouteTabs tabs={[{label: "Login", to: "/login"},{label:"Register", to: "/register"}]}/>
             <form className={styles.form} onSubmit={handleSubmit}>

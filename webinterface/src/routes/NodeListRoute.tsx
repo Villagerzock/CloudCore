@@ -40,7 +40,7 @@ function NodeListRoute(){
             <Header>
                 <span className={styles.headerTitle}>Nodes</span>
             </Header>
-            <main className={styles.page}>
+            <main className={`${styles.page} background`}>
                 <section className={styles.panel}>
                     <h1>Select a node</h1>
                     {loading && <p>Loading nodes...</p>}

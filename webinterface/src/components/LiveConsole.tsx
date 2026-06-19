@@ -1,7 +1,7 @@
 import styles from "./LiveConsole.module.css"
 import TextInput from "./TextInput.tsx";
 import {connectLiveConsole, type LiveConsoleConnection} from "../lib/LiveConsoleConnection.ts";
-import {type FormEvent, useEffect, useRef, useState} from "react";
+import {type FormEvent, useEffect, useMemo, useRef, useState} from "react";
 import AnsiImport from "ansi-to-react";
 
 type AnsiComponent = typeof AnsiImport;
@@ -21,8 +21,15 @@ function LiveConsole({ width = "100%", height = "100%", consoleId }: LiveConsole
     const outputRef = useRef<HTMLPreElement>(null);
     const connectionRef = useRef<LiveConsoleConnection | null>(null);
 
-    const [lines, setLines] = useState<string[]>([]);
+    const [consoleOutput, setConsoleOutput] = useState<{
+        consoleId: string;
+        lines: string[];
+    } | null>(null);
     const [command, setCommand] = useState("");
+    const lines = useMemo(
+        () => consoleOutput?.consoleId === consoleId ? consoleOutput.lines : [],
+        [consoleId, consoleOutput]
+    );
 
     function send(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -35,17 +42,22 @@ function LiveConsole({ width = "100%", height = "100%", consoleId }: LiveConsole
     }
 
     useEffect(() => {
-        setLines([]);
         if (consoleId === null) return;
 
-        const connection = connectLiveConsole(import.meta.env.VITE_CONSOLE_WS_URL ?? "/ws/console");
+        const connection = connectLiveConsole(
+            import.meta.env.VITE_CONSOLE_WS_URL ?? "/ws/console",
+            consoleId
+        );
         connectionRef.current = connection;
 
         const unsubscribe = connection.addListener(consoleId, (newLines) => {
-            setLines((currentLines) => [
-                ...currentLines,
-                ...newLines
-            ].slice(-MAX_LINES));
+            setConsoleOutput((currentOutput) => ({
+                consoleId,
+                lines: [
+                    ...(currentOutput?.consoleId === consoleId ? currentOutput.lines : []),
+                    ...newLines
+                ].slice(-MAX_LINES)
+            }));
         });
 
         return () => {

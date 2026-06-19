@@ -14,6 +14,7 @@ repositories {
 }
 
 dependencies {
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -39,6 +40,12 @@ tasks.jar {
             "Main-Class" to "net.villagerzock.cloudcore.core.Main"
         )
     }
+}
+
+tasks.withType<ShadowJar>().configureEach {
+    append("META-INF/spring.factories")
+    append("META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports")
+    mergeServiceFiles()
 }
 
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources")

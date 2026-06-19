@@ -66,6 +66,23 @@ body {
   margin: 0;
 }
 
+.background {
+  background:
+          radial-gradient(
+                  circle at calc(50% + var(--light-x, 0px))
+                  calc(50% + var(--light-y, 0px)),
+                  rgba(255,255,255,0.05),
+                  transparent 25%
+          ),
+          radial-gradient(
+                  circle at calc(50% + var(--light-x, 0px))
+                  calc(50% + var(--light-y, 0px)),
+                  var(--accent-bg),
+                  transparent 45%
+          ),
+          var(--bg);
+}
+
 h1,
 h2 {
   font-family: var(--heading);

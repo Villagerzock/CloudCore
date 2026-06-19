@@ -15,7 +15,7 @@ function TemplateListRoute(){
             <h1>Templates</h1>
             <div className={styles.list}>
                 {templates.map((template) => (
-                    <ServerTemplateCard key={template.id} {...template}/>
+                    <ServerTemplateCard key={template.name} {...template}/>
                 ))}
             </div>
         </>

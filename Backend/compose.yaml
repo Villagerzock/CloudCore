@@ -7,6 +7,7 @@ services:
       - "8080:8080"
     extra_hosts:
       - "mariadb:host-gateway"
+      - "host.docker.internal:host-gateway"
     environment:
       DB_HOST: mariadb
       DB_PORT: "3306"
@@ -15,4 +16,5 @@ services:
       DB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in Backend/.env}"
       DB_DDL_AUTO: "${DB_DDL_AUTO:-update}"
       LINK_CODE_SECRET: "${LINK_CODE_SECRET:?Set LINK_CODE_SECRET in Backend/.env}"
+      CORE_HANDSHAKE_LOOPBACK_HOST: "host.docker.internal"
     restart: unless-stopped

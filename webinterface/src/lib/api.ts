@@ -13,7 +13,6 @@ export type NetworkData = ChartData & {
 }
 
 export type Server = {
-    id: number;
     name: string;
     template: string;
     online: number;
@@ -21,7 +20,6 @@ export type Server = {
 }
 
 export type ServerTemplate = {
-    id: number;
     name: string;
     server_software: string;
     version: string;
@@ -150,16 +148,16 @@ export function getRunningServers(): Promise<Server[]> {
     return getJson("/servers");
 }
 
-export function getServerById(id: number): Promise<Server> {
-    return getJson(`/servers/${id}`);
+export function getServerByName(name: string): Promise<Server> {
+    return getJson(`/servers/${encodeURIComponent(name)}`);
 }
 
-export function getServerPlayerCountData(id: number): Promise<PlayerCountData[]> {
-    return getJson(`/servers/${id}/metrics/player-count`);
+export function getServerPlayerCountData(name: string): Promise<PlayerCountData[]> {
+    return getJson(`/servers/${encodeURIComponent(name)}/metrics/player-count`);
 }
 
-export function getServerNetworkData(id: number): Promise<NetworkData[]> {
-    return getJson(`/servers/${id}/metrics/network`);
+export function getServerNetworkData(name: string): Promise<NetworkData[]> {
+    return getJson(`/servers/${encodeURIComponent(name)}/metrics/network`);
 }
 
 export function getServerTemplates(): Promise<ServerTemplate[]> {

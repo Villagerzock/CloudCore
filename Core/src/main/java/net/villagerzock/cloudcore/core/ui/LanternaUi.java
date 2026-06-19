@@ -23,7 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 public final class LanternaUi {
-    private static final Pattern ANSI_ESCAPE = Pattern.compile("\\u001B\\[[;\\d]*m");
+    private static final Pattern ANSI_ESCAPE = Pattern.compile(
+            "\\u001B(?:\\[[0-?]*[ -/]*[@-~]|\\][^\\u0007]*(?:\\u0007|\\u001B\\\\))");
     private static final AtomicBoolean COMMAND_EXIT_REQUESTED = new AtomicBoolean();
     private static final AtomicBoolean NESTED_EXIT_REQUESTED = new AtomicBoolean();
     private static final AtomicReference<UiMode> UI_MODE = new AtomicReference<>(UiMode.NONE);
@@ -631,7 +632,20 @@ public final class LanternaUi {
     }
 
     private static void drawText(TextGraphics graphics, int column, int row, String text) {
-        graphics.putString(new TerminalPosition(column, row), text == null ? "" : text);
+        graphics.putString(new TerminalPosition(column, row), sanitizeTerminalText(text));
+    }
+
+    private static String sanitizeTerminalText(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        String withoutAnsi = ANSI_ESCAPE.matcher(text).replaceAll("");
+        StringBuilder sanitized = new StringBuilder(withoutAnsi.length());
+        withoutAnsi.codePoints()
+                .filter(codePoint -> !Character.isISOControl(codePoint) || codePoint == '\t')
+                .forEach(sanitized::appendCodePoint);
+        return sanitized.toString();
     }
 
     private static void drawBorder(TextGraphics graphics, WindowBounds window) {
@@ -805,7 +819,7 @@ public final class LanternaUi {
             return "";
         }
 
-        text = text.replace("\t", "    ");
+        text = sanitizeTerminalText(text).replace("\t", "    ");
 
         if (text.length() <= width) {
             return text;

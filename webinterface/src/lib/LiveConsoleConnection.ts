@@ -275,8 +275,12 @@ class DummyLiveConsoleConnection extends LiveConsoleConnection {
     }
 }
 
-export function connectLiveConsole(url: string): LiveConsoleConnection {
-    return new WebSocketLiveConsoleConnection(url);
+export function connectLiveConsole(url: string, consoleName: string): LiveConsoleConnection {
+    const websocketUrl = new URL(url, window.location.href);
+    const node = new URLSearchParams(window.location.search).get("node");
+    if (node !== null) websocketUrl.searchParams.set("node", node);
+    websocketUrl.searchParams.set("console", consoleName);
+    return new WebSocketLiveConsoleConnection(websocketUrl.toString());
 }
 
 export function connectDummyConsole(): LiveConsoleConnection {

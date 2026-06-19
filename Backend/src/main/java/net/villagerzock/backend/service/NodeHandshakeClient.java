@@ -17,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 @Service
 public class NodeHandshakeClient {
@@ -29,15 +31,18 @@ public class NodeHandshakeClient {
     private final CloudCoreNodeRepository nodes;
     private final RestClient.Builder restClientBuilder;
     private final int handshakePort;
+    private final String loopbackHost;
 
     public NodeHandshakeClient(
             CloudCoreNodeRepository nodes,
             RestClient.Builder restClientBuilder,
-            @Value("${cloudcore.handshake-port:8081}") int handshakePort
+            @Value("${cloudcore.handshake-port:8081}") int handshakePort,
+            @Value("${cloudcore.loopback-host:127.0.0.1}") String loopbackHost
     ) {
         this.nodes = nodes;
         this.restClientBuilder = restClientBuilder;
         this.handshakePort = handshakePort;
+        this.loopbackHost = loopbackHost;
     }
 
     public List<ServerDto> getServers(long nodeId) {
@@ -184,12 +189,20 @@ public class NodeHandshakeClient {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
         String baseUrl = UriComponentsBuilder.newInstance()
                 .scheme("http")
-                .host(ipAddress)
+                .host(resolveHost(ipAddress))
                 .port(handshakePort)
                 .path("/core-handshake/v1")
                 .build()
                 .toUriString();
         return restClientBuilder.clone().baseUrl(baseUrl).build();
+    }
+
+    private String resolveHost(String ipAddress) {
+        try {
+            return InetAddress.getByName(ipAddress).isLoopbackAddress() ? loopbackHost : ipAddress;
+        } catch (UnknownHostException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Node has an invalid IP address", exception);
+        }
     }
 
     private ResponseStatusException unavailable(long nodeId, RestClientException cause) {
