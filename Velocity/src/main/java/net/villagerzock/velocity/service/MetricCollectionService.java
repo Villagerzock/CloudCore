@@ -56,6 +56,7 @@ public class MetricCollectionService {
         int proxyPlayers = proxy.getPlayerCount();
         recordPlayer(PROXY, "days", dayStart(now), proxyPlayers);
         recordPlayer(PROXY, "hours", hourStart(now), proxyPlayers);
+        recordPlayer(PROXY, "minutes", minuteStart(now), proxyPlayers);
 
         proxy.getAllServers().forEach(server -> recordPlayer(
                 server.getServerInfo().getName(),

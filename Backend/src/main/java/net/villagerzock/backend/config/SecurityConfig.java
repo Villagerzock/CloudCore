@@ -32,6 +32,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/cloudcore-servers/link").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/core/logs").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/core/metrics").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .httpBasic(Customizer.withDefaults())

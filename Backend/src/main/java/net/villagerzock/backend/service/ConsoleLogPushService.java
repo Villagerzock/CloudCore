@@ -45,7 +45,7 @@ public class ConsoleLogPushService {
         webSocketHandler.broadcast(nodeId, request.console(), List.copyOf(request.lines()));
     }
 
-    private long resolveNode(String remoteAddress) {
+    public long resolveNode(String remoteAddress) {
         String canonicalAddress = canonicalize(remoteAddress);
         List<Long> exactMatches = nodes.findLinkedNodeIdsByIpAddress(canonicalAddress);
         if (exactMatches.size() == 1) {

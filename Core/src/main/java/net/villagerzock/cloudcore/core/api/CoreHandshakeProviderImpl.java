@@ -37,6 +37,22 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
     }
 
     @Override
+    public String launchServer(String template, boolean singleton) {
+        try {
+            ServerManager.ServerLaunchResult result = ServerManager.launchServer(template, singleton).get();
+            if (result.server() == null) {
+                throw new IllegalStateException(result.message());
+            }
+            return result.server().name();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while launching server", exception);
+        } catch (java.util.concurrent.ExecutionException exception) {
+            throw new IllegalStateException("Failed to launch server", exception.getCause());
+        }
+    }
+
+    @Override
     public List<ServerTemplate> getTemplates() {
         List<ServerTemplate> result = new ArrayList<>();
         Path templatesDir = ServerManager.BASE_DIR.resolve("templates");

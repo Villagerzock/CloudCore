@@ -3,6 +3,8 @@ package net.villagerzock.backend.service;
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.CommandRequest;
 import net.villagerzock.backend.dto.NetworkPointDto;
+import net.villagerzock.backend.dto.LaunchServerRequest;
+import net.villagerzock.backend.dto.LaunchServerResponse;
 import net.villagerzock.backend.dto.NodeMetadataDto;
 import net.villagerzock.backend.dto.ServerDto;
 import net.villagerzock.backend.dto.ServerTemplateDto;
@@ -49,6 +51,18 @@ public class NodeHandshakeClient {
 
     public List<ServerDto> getServers(long nodeId) {
         return get(nodeId, "/servers", SERVER_LIST);
+    }
+
+    public LaunchServerResponse launchServer(long nodeId, LaunchServerRequest request) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/servers")
+                    .body(request)
+                    .retrieve()
+                    .body(LaunchServerResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
     }
 
     public ServerDto getServer(long nodeId, String serverName) {
@@ -187,6 +201,10 @@ public class NodeHandshakeClient {
     }
 
     private RestClient client(long nodeId) {
+        return client(nodeId, Duration.ofSeconds(5));
+    }
+
+    private RestClient client(long nodeId, Duration readTimeout) {
         String ipAddress = nodes.findIpAddressById(nodeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
         String baseUrl = UriComponentsBuilder.newInstance()
@@ -200,7 +218,7 @@ public class NodeHandshakeClient {
                 .connectTimeout(Duration.ofSeconds(3))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        requestFactory.setReadTimeout(readTimeout);
         return restClientBuilder.clone()
                 .baseUrl(baseUrl)
                 .requestFactory(requestFactory)

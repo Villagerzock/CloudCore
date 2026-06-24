@@ -3,6 +3,7 @@ package net.villagerzock.cloudcore.core;
 import net.villagerzock.cloudcore.core.api.ApiServer;
 import net.villagerzock.cloudcore.core.api.CoreHandshakeProviderImpl;
 import net.villagerzock.cloudcore.core.api.CoreLogForwarder;
+import net.villagerzock.cloudcore.core.api.CoreMetricForwarder;
 import net.villagerzock.cloudcore.core.command.SuggestionProvider;
 import net.villagerzock.cloudcore.core.command.Suggests;
 import net.villagerzock.cloudcore.core.command.providers.RunningServerProvider;
@@ -323,6 +324,7 @@ public class Main {
                 ServerManager.init();
                 if (Config.getInstance().isUseWebPanel()) {
                     CoreLogForwarder.start();
+                    CoreMetricForwarder.start();
                 }
             });
 
@@ -349,6 +351,7 @@ public class Main {
         } finally {
             System.out.println("Shutting Down All Servers and Proxy");
             CoreLogForwarder.stop();
+            CoreMetricForwarder.stop();
             ServerManager.shutdown();
 
             ApiServer.stop();

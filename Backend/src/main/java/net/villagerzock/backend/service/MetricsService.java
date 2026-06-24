@@ -17,7 +17,7 @@ public class MetricsService {
     }
 
     public List<ChartPointDto> getProxyPlayerCount(long nodeId, String range) {
-        requireRange(range, "days", "hours");
+        requireRange(range, "days", "hours", "minutes");
         return handshakeClient.getProxyPlayerCount(nodeId, range);
     }
 
@@ -34,11 +34,11 @@ public class MetricsService {
         return handshakeClient.getServerNetwork(nodeId, serverName);
     }
 
-    private void requireRange(String range, String first, String second) {
-        if (!first.equals(range) && !second.equals(range)) {
+    private void requireRange(String range, String... allowed) {
+        if (java.util.Arrays.stream(allowed).noneMatch(range::equals)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Range must be " + first + " or " + second);
+                    "Invalid metric range");
         }
     }
 }

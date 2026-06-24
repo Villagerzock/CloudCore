@@ -3,9 +3,9 @@ import styles from "./ImageButton.module.css"
 import * as React from "react";
 
 
-function ImageButton({ onClick, children }: { onClick: MouseEventHandler<HTMLButtonElement>, children : React.ReactElement }) {
+function ImageButton({ onClick, children, tooltip }: { onClick: MouseEventHandler<HTMLButtonElement>, children : React.ReactElement, tooltip? : string }) {
     return (
-        <button onClick={onClick} className={styles.button}>
+        <button type="button" onClick={onClick} className={styles.button} title={tooltip}>
             {children}
         </button>
     )

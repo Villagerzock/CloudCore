@@ -12,7 +12,7 @@ export type NetworkData = ChartData & {
     outbound: number;
 }
 
-export type PlayerMetricRange = "days" | "hours";
+export type PlayerMetricRange = "days" | "hours" | "minutes";
 export type NetworkMetricRange = "days" | "minutes";
 type MetricRange = PlayerMetricRange | NetworkMetricRange;
 
@@ -136,6 +136,31 @@ async function getJson<T>(path: string, includeSelectedNode = true): Promise<T> 
     return response.json() as Promise<T>;
 }
 
+async function postJson<T>(path: string, body: object): Promise<T> {
+    const token = localStorage.getItem("auth_token");
+    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem("auth_token");
+        window.location.assign("/login");
+        throw new Error("Authentication required");
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `API request failed (${response.status} ${response.statusText})`));
+    }
+
+    return response.json() as Promise<T>;
+}
+
 export function getNodes(): Promise<Node[]> {
     return getJson("/nodes", false);
 }
@@ -152,6 +177,13 @@ export function getProxyNetworkData(range: NetworkMetricRange): Promise<NetworkD
 
 export function getRunningServers(): Promise<Server[]> {
     return getJson("/servers");
+}
+
+export function launchServer(template: string, singleton: boolean): Promise<string> {
+    return postJson<{name: string}>("/servers", {
+        template: template.trim(),
+        singleton
+    }).then(response => response.name);
 }
 
 export function getServerByName(name: string): Promise<Server> {
@@ -171,7 +203,7 @@ export function getServerTemplates(): Promise<ServerTemplate[]> {
     return getJson("/templates");
 }
 
-function localizeMetricKeys<T extends ChartData>(points: T[], range: MetricRange): T[] {
+export function localizeMetricKeys<T extends ChartData>(points: T[], range: MetricRange): T[] {
     const options: Intl.DateTimeFormatOptions = range === "days"
         ? {day: "2-digit", month: "2-digit", year: "numeric"}
         : {hour: "2-digit", minute: "2-digit", hourCycle: "h23"};

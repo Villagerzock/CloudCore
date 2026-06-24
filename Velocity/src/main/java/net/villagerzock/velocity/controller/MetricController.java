@@ -22,8 +22,8 @@ public class MetricController {
 
     @GetMapping("/proxy/player-count")
     public List<PlayerMetricPoint> proxyPlayers(@RequestParam(defaultValue = "days") String range) {
-        if (!range.equals("days") && !range.equals("hours")) {
-            throw new IllegalArgumentException("Player range must be days or hours");
+        if (!range.equals("days") && !range.equals("hours") && !range.equals("minutes")) {
+            throw new IllegalArgumentException("Player range must be days, hours or minutes");
         }
         return metrics.playerMetrics("proxy", range);
     }

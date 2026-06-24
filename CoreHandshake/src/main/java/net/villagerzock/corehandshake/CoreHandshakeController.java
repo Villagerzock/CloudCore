@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import net.villagerzock.corehandshake.dto.ChartPoint;
 import net.villagerzock.corehandshake.dto.CommandRequest;
 import net.villagerzock.corehandshake.dto.NetworkPoint;
+import net.villagerzock.corehandshake.dto.LaunchServerRequest;
+import net.villagerzock.corehandshake.dto.LaunchServerResponse;
 import net.villagerzock.corehandshake.dto.NodeMetadata;
 import net.villagerzock.corehandshake.dto.ServerInfo;
 import net.villagerzock.corehandshake.dto.ServerTemplate;
@@ -32,6 +34,14 @@ public class CoreHandshakeController {
     @GetMapping("/servers")
     public List<ServerInfo> getRunningServers() {
         return provider.getRunningServers();
+    }
+
+    @PostMapping("/servers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LaunchServerResponse launchServer(@Valid @RequestBody LaunchServerRequest request) {
+        return new LaunchServerResponse(provider.launchServer(
+                request.template().trim(),
+                request.singleton()));
     }
 
     @GetMapping("/servers/{serverName}")
@@ -79,8 +89,12 @@ public class CoreHandshakeController {
             @RequestParam(defaultValue = "days") String range
     ) {
         MetricRange metricRange = MetricRange.parse(range);
-        if (metricRange != MetricRange.DAYS && metricRange != MetricRange.HOURS) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Player range must be days or hours");
+        if (metricRange != MetricRange.DAYS
+                && metricRange != MetricRange.HOURS
+                && metricRange != MetricRange.MINUTES) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Player range must be days, hours or minutes");
         }
         return provider.getProxyPlayerCount(metricRange);
     }

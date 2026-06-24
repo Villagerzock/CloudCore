@@ -93,6 +93,10 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void send(WebSocketSession session, ConsoleMessage response) throws IOException {
+        sendObject(session, response);
+    }
+
+    private void sendObject(WebSocketSession session, Object response) throws IOException {
         synchronized (session) {
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
         }
@@ -115,6 +119,29 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
             }
             try {
                 send(session, message);
+            } catch (IOException exception) {
+                unregister(session);
+                try {
+                    session.close(CloseStatus.SERVER_ERROR);
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    public void broadcastMetrics(long nodeId, MetricConsoleMessage message) {
+        Subscription subscription = new Subscription(nodeId, message.console());
+        Set<WebSocketSession> sessions = subscriptions.get(subscription);
+        if (sessions == null) {
+            return;
+        }
+        for (WebSocketSession session : List.copyOf(sessions)) {
+            if (!session.isOpen()) {
+                unregister(session);
+                continue;
+            }
+            try {
+                sendObject(session, message);
             } catch (IOException exception) {
                 unregister(session);
                 try {

@@ -17,6 +17,8 @@ public interface CoreHandshakeProvider {
 
     Optional<ServerInfo> getServer(String serverName);
 
+    String launchServer(String template, boolean singleton);
+
     List<ServerTemplate> getTemplates();
 
     List<String> getProxyLogs();

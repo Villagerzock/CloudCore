@@ -3,6 +3,12 @@ package net.villagerzock.backend.controller;
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.NetworkPointDto;
 import net.villagerzock.backend.dto.ServerDto;
+import net.villagerzock.backend.dto.LaunchServerRequest;
+import net.villagerzock.backend.dto.LaunchServerResponse;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import net.villagerzock.backend.service.MetricsService;
 import net.villagerzock.backend.service.ServerService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +35,17 @@ public class ServerController {
     @GetMapping
     public List<ServerDto> getRunningServers(@RequestAttribute("cloudcore.nodeId") long nodeId) {
         return serverService.getRunningServers(nodeId);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public LaunchServerResponse launchServer(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            @Valid @RequestBody LaunchServerRequest request
+    ) {
+        return serverService.launchServer(nodeId, new LaunchServerRequest(
+                request.template().trim(),
+                request.singleton()));
     }
 
     @GetMapping("/{name}")

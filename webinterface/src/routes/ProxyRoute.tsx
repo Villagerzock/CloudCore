@@ -5,7 +5,7 @@ import {useProxyMetrics} from "../hooks/useProxyMetrics.ts";
 
 
 function ProxyRoute(){
-    const { playerCountData, networkData, error } = useProxyMetrics("hours", "minutes");
+    const { playerCountData, networkData, error } = useProxyMetrics("minutes", "minutes");
 
     return (
         <>

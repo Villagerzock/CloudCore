@@ -53,6 +53,15 @@ type ConsoleMessage = {
     lines: string[];
 }
 
+export type LiveMetricMessage = {
+    type: "metrics";
+    console: string;
+    playerCount: Array<{key: string; value: number}>;
+    network: Array<{key: string; inbound: number; outbound: number}>;
+}
+
+export const LIVE_METRIC_EVENT = "cloudcore:live-metrics";
+
 type ConsoleCommand = {
     console: string;
     command?: string;
@@ -66,6 +75,15 @@ function isConsoleMessage(value: unknown): value is ConsoleMessage {
     return typeof message.console === "string"
         && Array.isArray(message.lines)
         && message.lines.every((line) => typeof line === "string");
+}
+
+function isMetricMessage(value: unknown): value is LiveMetricMessage {
+    if (typeof value !== "object" || value === null) return false;
+    const message = value as Record<string, unknown>;
+    return message.type === "metrics"
+        && typeof message.console === "string"
+        && Array.isArray(message.playerCount)
+        && Array.isArray(message.network);
 }
 
 function toWebSocketUrl(url: string): string {
@@ -220,6 +238,10 @@ class WebSocketLiveConsoleConnection extends LiveConsoleConnection {
 
         if (isConsoleMessage(message)) {
             this.emitLines(message.console, message.lines);
+        } else if (isMetricMessage(message)) {
+            window.dispatchEvent(new CustomEvent<LiveMetricMessage>(LIVE_METRIC_EVENT, {
+                detail: message
+            }));
         }
     }
 
