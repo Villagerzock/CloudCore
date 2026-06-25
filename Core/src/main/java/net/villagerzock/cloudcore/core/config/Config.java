@@ -2,7 +2,7 @@ package net.villagerzock.cloudcore.core.config;
 
 import lombok.Getter;
 import net.villagerzock.cloudcore.core.server.ServerManager;
-import net.villagerzock.cloudcore.core.ui.LanternaUi;
+import net.villagerzock.cloudcore.core.console.ConsolePrompts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.representer.Representer;
@@ -126,9 +126,9 @@ public class Config {
     }
 
     private static MariaDb launchDatabaseConfigWizard() throws IOException {
-        String port = LanternaUi.input("Setup Database", "What Port is MariaDB running on?", "3306", false);
-        String user = LanternaUi.input("Setup Database", "What is the name of the MariaDB User?", "cloudcore", false);
-        String password = LanternaUi.input("Setup Database", "What is the Password?", "", true);
+        String port = ConsolePrompts.input("Setup Database", "What Port is MariaDB running on?", "3306", false);
+        String user = ConsolePrompts.input("Setup Database", "What is the name of the MariaDB User?", "cloudcore", false);
+        String password = ConsolePrompts.input("Setup Database", "What is the Password?", "", true);
 
         MariaDb db = new MariaDb();
 

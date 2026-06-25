@@ -19,7 +19,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("info.picocli:picocli:4.7.7")
-    implementation("com.googlecode.lanterna:lanterna:3.1.2")
+    implementation("org.jline:jline:3.30.0")
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.yaml:snakeyaml:2.5")
     compileOnly("org.projectlombok:lombok:1.18.38")

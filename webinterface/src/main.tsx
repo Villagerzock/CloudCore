@@ -12,6 +12,7 @@ import LoginRoute from "./routes/LoginRoute.tsx";
 import RegisterRoute from "./routes/RegisterRoute.tsx";
 import NodeListRoute from "./routes/NodeListRoute.tsx";
 import BackgroundEffect from "./components/BackgroundEffect.tsx";
+import UserListRoute from "./routes/UserListRoute.tsx";
 
 function createRouter(){
     return createBrowserRouter([
@@ -50,6 +51,10 @@ function createRouter(){
                 {
                     path:"/templates",
                     element: <TemplateListRoute/>
+                },
+                {
+                    path:"/users",
+                    element: <UserListRoute/>
                 },
                 {
                     path:"*",

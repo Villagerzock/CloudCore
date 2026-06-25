@@ -4,37 +4,29 @@ import net.villagerzock.cloudcore.core.api.ApiServer;
 import net.villagerzock.cloudcore.core.api.CoreHandshakeProviderImpl;
 import net.villagerzock.cloudcore.core.api.CoreLogForwarder;
 import net.villagerzock.cloudcore.core.api.CoreMetricForwarder;
-import net.villagerzock.cloudcore.core.command.SuggestionProvider;
 import net.villagerzock.cloudcore.core.command.Suggests;
 import net.villagerzock.cloudcore.core.command.providers.RunningServerProvider;
 import net.villagerzock.cloudcore.core.command.providers.ServerTemplateProvider;
 import net.villagerzock.cloudcore.core.config.Config;
 import net.villagerzock.cloudcore.core.server.ProxyServerManager;
 import net.villagerzock.cloudcore.core.server.ServerManager;
-import net.villagerzock.cloudcore.core.ui.LanternaUi;
 import net.villagerzock.corehandshake.CoreHandshakeInitializer;
 import picocli.CommandLine;
-import picocli.CommandLine.Model.ArgGroupSpec;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Model.OptionSpec;
-import picocli.CommandLine.Model.PositionalParamSpec;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
 import static picocli.CommandLine.*;
 
 public class Main {
-    private static final Map<Class<? extends SuggestionProvider>, SuggestionProvider> SUGGESTION_PROVIDER_CACHE = new HashMap<>();
-
     public static final String logo = """
             \u001B[36m______________            _________\u001B[33m________                 \s
             \u001B[36m__  ____/__  /_________  _______  /\u001B[33m_  ____/_________________\s
@@ -68,9 +60,6 @@ public class Main {
 
         public String server;
 
-        @Option(names = {"-b","--book"})
-        public boolean asBook;
-
         @Override
         public void run() {
             try {
@@ -89,11 +78,7 @@ public class Main {
                     return;
                 }
 
-                if (asBook) {
-                    ServerManager.showLiveLogsBook(runningServer);
-                } else {
-                    ServerManager.printLogsSnapshot(runningServer);
-                }
+                ServerManager.printLogsSnapshot(runningServer);
             } catch (Exception e) {
                 throw new RuntimeException("Failed to get server logs", e);
             }
@@ -295,56 +280,42 @@ public class Main {
     public static Map<String, Map<String, String>> SERVER_TO_VERSION_TO_URL_MAP;
 
     public static void main(String[] args) throws IOException {
-        installTerminalSafety();
-
         try {
+            disableSpringLogs();
+            System.out.println(logo);
             Config.load();
 
-            LanternaUi.showStartup("CloudCore Startup", logo, () -> {
-                System.out.println("Started CloudCore Service");
-                SERVER_TO_VERSION_TO_URL_MAP = VersionHelper.loadServerVersionMap();
+            System.out.println("CloudCore Startup");
+            System.out.println("Started CloudCore Service");
+            SERVER_TO_VERSION_TO_URL_MAP = VersionHelper.loadServerVersionMap();
 
-                Thread communication = new Thread(()->{
-                    try {
-                        ApiServer.start();
-                    } catch (IOException e) {
-                        System.out.println("Failed to Start Server: " + e.getMessage());
-                        throw new RuntimeException(e);
-                    }
-                }, "communication");
-
-                communication.start();
-
-                if (Config.getInstance().isUseWebPanel()){
-                    Thread webPanelConnection = new Thread(
-                            () -> CoreHandshakeInitializer.start(new CoreHandshakeProviderImpl()),
-                            "web-panel-connection");
-                    webPanelConnection.start();
+            Thread communication = new Thread(()->{
+                try {
+                    ApiServer.start();
+                } catch (IOException e) {
+                    System.out.println("Failed to Start Server: " + e.getMessage());
+                    throw new RuntimeException(e);
                 }
-                ServerManager.init();
-                if (Config.getInstance().isUseWebPanel()) {
-                    CoreLogForwarder.start();
-                    CoreMetricForwarder.start();
-                }
-            });
+            }, "communication");
+
+            communication.start();
+
+            if (Config.getInstance().isUseWebPanel()){
+                Thread webPanelConnection = new Thread(
+                        () -> CoreHandshakeInitializer.start(new CoreHandshakeProviderImpl()),
+                        "web-panel-connection");
+                webPanelConnection.start();
+            }
+            ServerManager.init();
+            if (Config.getInstance().isUseWebPanel()) {
+                CoreLogForwarder.start();
+                CoreMetricForwarder.start();
+            }
 
             CloudCoreCommand rootCommand = new CloudCoreCommand();
             CommandLine commandLine = new CommandLine(rootCommand);
 
-            LanternaUi.commandLoop(
-                    "CloudCore Command Mode",
-                    logo,
-                    command -> completeCommandLine(commandLine, command),
-                    line -> {
-                        try {
-                            int exitCode = commandLine.execute(splitCommandLine(line));
-                            return exitCode != 42;
-                        } catch (Exception e) {
-                            System.out.println("Invalid command line: " + e.getMessage());
-                            return true;
-                        }
-                    }
-            );
+            commandLoop(commandLine);
         } catch (Throwable t) {
             t.printStackTrace();
             throw t;
@@ -356,291 +327,48 @@ public class Main {
 
             ApiServer.stop();
             CoreHandshakeInitializer.stop();
-            LanternaUi.restoreTerminal();
         }
 
     }
 
-    private static void installTerminalSafety() {
-        Runtime.getRuntime().addShutdownHook(new Thread(LanternaUi::restoreTerminal, "terminal-restore"));
-        installSigintHandler();
+    private static void disableSpringLogs() {
+        System.setProperty("spring.main.banner-mode", "off");
+        System.setProperty("logging.level.root", "OFF");
+        System.setProperty("logging.level.org.springframework", "OFF");
+        System.setProperty("logging.level.org.apache.catalina", "OFF");
+        System.setProperty("logging.level.org.apache.coyote", "OFF");
+        System.setProperty("logging.level.org.apache.tomcat", "OFF");
     }
 
-    private static void installSigintHandler() {
-        try {
-            Class<?> signalClass = Class.forName("sun.misc.Signal");
-            Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            Object intSignal = signalClass.getConstructor(String.class).newInstance("INT");
-            Object handler = java.lang.reflect.Proxy.newProxyInstance(
-                    Main.class.getClassLoader(),
-                    new Class<?>[]{signalHandlerClass},
-                    (proxy, method, methodArgs) -> {
-                        if ("handle".equals(method.getName())) {
-                            LanternaUi.handleExternalInterrupt();
-                        }
-                        return null;
-                    }
-            );
+    private static void commandLoop(CommandLine commandLine) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
-            signalClass.getMethod("handle", signalClass, signalHandlerClass).invoke(null, intSignal, handler);
-        } catch (ReflectiveOperationException | LinkageError ignored) {
-            // If SIGINT cannot be intercepted on this runtime, Lanterna key handling and the shutdown hook still apply.
-        }
-    }
+        System.out.println("CloudCore Command Mode");
 
-    private record CompletionInput(List<String> tokens, boolean trailingSeparator) {
-        String currentToken() {
-            if (trailingSeparator || tokens.isEmpty()) {
-                return "";
+        while (true) {
+            System.out.print("> ");
+            String line = reader.readLine();
+
+            if (line == null) {
+                break;
             }
 
-            return tokens.get(tokens.size() - 1);
-        }
-    }
+            line = line.trim();
 
-    private record ArgumentState(Set<OptionSpec> usedOptions, int positionals, OptionSpec awaitingValue) {
-    }
-
-    private static LanternaUi.CommandCompletion completeCommandLine(CommandLine commandLine, String input) {
-        CompletionInput parsed = parseCompletionInput(input);
-        CommandSpec root = commandLine.getCommandSpec();
-
-        if (parsed.tokens().isEmpty()) {
-            return suggestions(root.subcommands().keySet(), "");
-        }
-
-        String commandName = parsed.tokens().get(0);
-        CommandLine subcommand = root.subcommands().get(commandName);
-
-        if (subcommand == null) {
-            return suggestions(root.subcommands().keySet(), parsed.currentToken());
-        }
-
-        if (parsed.tokens().size() == 1 && !parsed.trailingSeparator()) {
-            return suggestions(root.subcommands().keySet(), parsed.currentToken());
-        }
-
-        CommandSpec spec = subcommand.getCommandSpec();
-        List<String> argumentTokens = parsed.tokens().subList(1, parsed.tokens().size());
-        String currentToken = parsed.currentToken();
-        List<String> completedTokens = parsed.trailingSeparator() || argumentTokens.isEmpty()
-                ? argumentTokens
-                : argumentTokens.subList(0, argumentTokens.size() - 1);
-        ArgumentState state = argumentState(spec, completedTokens);
-
-        if (state.awaitingValue() != null) {
-            return valueCompletion(state.awaitingValue(), currentToken);
-        }
-
-        OptionSpec currentOption = spec.findOption(currentToken);
-
-        if (!parsed.trailingSeparator() && currentOption != null && expectsValue(currentOption)) {
-            return valueCompletion(currentOption, "");
-        }
-
-        if (!parsed.trailingSeparator() && currentToken.startsWith("-")) {
-            return suggestions(remainingOptionNames(spec, state.usedOptions()), currentToken);
-        }
-
-        PositionalParamSpec positional = nextPositional(spec, state.positionals());
-
-        if (positional != null) {
-            return valueCompletion(positional, currentToken);
-        }
-
-        return suggestions(remainingOptionNames(spec, state.usedOptions()), currentToken);
-    }
-
-    private static LanternaUi.CommandCompletion suggestions(Collection<String> candidates, String prefix) {
-        String filter = prefix == null ? "" : prefix;
-
-        return new LanternaUi.CommandCompletion(
-                candidates.stream()
-                        .filter(candidate -> candidate.startsWith(filter))
-                        .distinct()
-                        .toList(),
-                ""
-        );
-    }
-
-    private static LanternaUi.CommandCompletion valueCompletion(picocli.CommandLine.Model.ArgSpec arg, String prefix) {
-        Suggests suggests = suggestsAnnotation(arg);
-
-        if (suggests != null) {
-            return suggestions(provider(suggests.value()).suggestions(), prefix);
-        }
-
-        return valueHint(arg);
-    }
-
-    private static LanternaUi.CommandCompletion valueHint(picocli.CommandLine.Model.ArgSpec arg) {
-        String label = arg.paramLabel();
-
-        if (label == null || label.isBlank() || label.startsWith("<")) {
-            label = arg.isOption() ? ((OptionSpec) arg).longestName() : "parameter";
-        }
-
-        return new LanternaUi.CommandCompletion(List.of(), "expected " + label + ": " + simpleTypeName(arg.type()));
-    }
-
-    private static Suggests suggestsAnnotation(picocli.CommandLine.Model.ArgSpec arg) {
-        Object userObject = arg.userObject();
-
-        if (userObject instanceof Field field) {
-            return field.getAnnotation(Suggests.class);
-        }
-
-        try {
-            Field annotatedElementField = picocli.CommandLine.Model.ArgSpec.class.getDeclaredField("annotatedElement");
-            annotatedElementField.setAccessible(true);
-            Object annotatedElement = annotatedElementField.get(arg);
-
-            if (annotatedElement instanceof picocli.CommandLine.Model.IAnnotatedElement element) {
-                return element.getAnnotation(Suggests.class);
-            }
-        } catch (ReflectiveOperationException ignored) {
-            // Fall back to the default type hint when picocli does not expose the annotation.
-        }
-
-        return null;
-    }
-
-    private static SuggestionProvider provider(Class<? extends SuggestionProvider> providerClass) {
-        return SUGGESTION_PROVIDER_CACHE.computeIfAbsent(providerClass, Main::createSuggestionProvider);
-    }
-
-    private static SuggestionProvider createSuggestionProvider(Class<? extends SuggestionProvider> providerClass) {
-        try {
-            return providerClass.getDeclaredConstructor().newInstance();
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to create suggestion provider: " + providerClass.getSimpleName(), e);
-        }
-    }
-
-    private static List<String> remainingOptionNames(CommandSpec spec, Set<OptionSpec> usedOptions) {
-        List<OptionSpec> options = new ArrayList<>(spec.options());
-
-        for (ArgGroupSpec group : spec.argGroups()) {
-            options.addAll(group.allOptionsNested());
-        }
-
-        return options.stream()
-                .filter(option -> !option.hidden())
-                .filter(option -> !usedOptions.contains(option))
-                .flatMap(option -> Arrays.stream(option.names()))
-                .distinct()
-                .toList();
-    }
-
-    private static PositionalParamSpec nextPositional(CommandSpec spec, int positionals) {
-        List<PositionalParamSpec> positionalParams = new ArrayList<>(spec.positionalParameters());
-
-        for (ArgGroupSpec group : spec.argGroups()) {
-            positionalParams.addAll(group.allPositionalParametersNested());
-        }
-
-        if (positionals >= positionalParams.size()) {
-            return null;
-        }
-
-        return positionalParams.get(positionals);
-    }
-
-    private static ArgumentState argumentState(CommandSpec spec, List<String> tokens) {
-        Set<OptionSpec> usedOptions = new HashSet<>();
-        int positionals = 0;
-        OptionSpec awaitingValue = null;
-
-        for (String token : tokens) {
-            if (awaitingValue != null) {
-                awaitingValue = null;
+            if (line.isBlank()) {
                 continue;
             }
 
-            OptionSpec option = spec.findOption(token);
+            try {
+                int exitCode = commandLine.execute(splitCommandLine(line));
 
-            if (option != null) {
-                usedOptions.add(option);
-
-                if (expectsValue(option)) {
-                    awaitingValue = option;
+                if (exitCode == 42) {
+                    break;
                 }
-
-                continue;
+            } catch (Exception e) {
+                System.out.println("Invalid command line: " + e.getMessage());
             }
-
-            positionals++;
         }
-
-        return new ArgumentState(usedOptions, positionals, awaitingValue);
-    }
-
-    private static boolean expectsValue(OptionSpec option) {
-        return option.arity().max() > 0 && option.type() != boolean.class && option.type() != Boolean.class;
-    }
-
-    private static String simpleTypeName(Class<?> type) {
-        if (type == null) {
-            return "String";
-        }
-
-        if (type.isArray()) {
-            return simpleTypeName(type.getComponentType()) + "[]";
-        }
-
-        return type.getSimpleName();
-    }
-
-    private static CompletionInput parseCompletionInput(String line) {
-        List<String> words = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inSingleQuote = false;
-        boolean inDoubleQuote = false;
-        boolean escaping = false;
-
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-
-            if (escaping) {
-                current.append(c);
-                escaping = false;
-                continue;
-            }
-
-            if (c == '\\') {
-                escaping = true;
-                continue;
-            }
-
-            if (c == '\'' && !inDoubleQuote) {
-                inSingleQuote = !inSingleQuote;
-                continue;
-            }
-
-            if (c == '"' && !inSingleQuote) {
-                inDoubleQuote = !inDoubleQuote;
-                continue;
-            }
-
-            if (Character.isWhitespace(c) && !inSingleQuote && !inDoubleQuote) {
-                if (!current.isEmpty()) {
-                    words.add(current.toString());
-                    current.setLength(0);
-                }
-
-                continue;
-            }
-
-            current.append(c);
-        }
-
-        if (!current.isEmpty()) {
-            words.add(current.toString());
-        }
-
-        boolean trailingSeparator = !line.isEmpty() && Character.isWhitespace(line.charAt(line.length() - 1));
-
-        return new CompletionInput(words, trailingSeparator);
     }
 
     private static String[] splitCommandLine(String line) {

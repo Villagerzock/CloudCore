@@ -1,3 +1,5 @@
+import {type NavigateFunction, type NavigateOptions, type Path, type To, useLocation, useNavigate} from "react-router";
+
 export type ChartData = {
     key: string;
     [dataKey: string]: string | number;
@@ -216,4 +218,30 @@ export function localizeMetricKeys<T extends ChartData>(points: T[], range: Metr
             key: Number.isNaN(instant.getTime()) ? point.key : formatter.format(instant)
         };
     });
+}
+
+export function usePersistentNavigate(): NavigateFunction{
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    return (toOrDelta : To | number, options? : NavigateOptions) => {
+
+        if (typeof toOrDelta == "number") return;
+        const to : To = toOrDelta;
+
+        const locationParams = new URLSearchParams(location.search);
+
+        const actualTo : Partial<Path> = typeof to == "string" ? {pathname: to} : to;
+
+        if (locationParams.has("node")){
+            const resultParams = new URLSearchParams(actualTo.search);
+            resultParams.set("node",locationParams.get("node") ?? "");
+            actualTo.search = resultParams.toString();
+            console.log("Set node")
+        }
+
+        console.log(`Navigating to: ${actualTo}`);
+
+        navigate(actualTo, options);
+    }
 }

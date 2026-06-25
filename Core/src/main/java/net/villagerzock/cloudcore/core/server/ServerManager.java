@@ -6,7 +6,7 @@ import net.villagerzock.cloudcore.core.Main;
 import net.villagerzock.cloudcore.core.config.Config;
 import net.villagerzock.cloudcore.core.config.NoClassTagRepresenter;
 import net.villagerzock.cloudcore.core.server.dto.ConfigDto;
-import net.villagerzock.cloudcore.core.ui.LanternaUi;
+import net.villagerzock.cloudcore.core.console.ConsolePrompts;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -315,9 +315,9 @@ try = [
                 return;
             }
 
-            String proxyPort = LanternaUi.input("Proxy Setup", "Proxy port", "25565", false);
-            String memory = LanternaUi.input("Proxy Setup", "Proxy memory, example: 512M / 1G", "512M", false);
-            String velocityVersion = LanternaUi.input("Proxy Setup", "Velocity version", "latest", false);
+            String proxyPort = ConsolePrompts.input("Proxy Setup", "Proxy port", "25565", false);
+            String memory = ConsolePrompts.input("Proxy Setup", "Proxy memory, example: 512M / 1G", "512M", false);
+            String velocityVersion = ConsolePrompts.input("Proxy Setup", "Velocity version", "latest", false);
 
             Files.createDirectories(proxyDir);
             writeProxyLaunchConfig(proxyConfigFile, proxyPort, memory, velocityVersion);
@@ -710,95 +710,59 @@ try = [
                 config.type.setupForVelocity(serverDir,secret);
 
                 String containerName = sanitizeDockerName(instanceName);
+                RunningServer runningServer = null;
 
-                List<String> command = new ArrayList<>(DOCKER_BASE_ARGS);
+                for (int attempt = 1; attempt <= 2; attempt++) {
+                    runningServer = startDockerServer(name, singleton, instanceName, serverDir, containerName, config);
 
-                command.addAll(List.of(
-                        "--name",
-                        containerName,
-                        "-p",
-                        ":25565",
-                        "-v",
-                        serverDir.toAbsolutePath() + ":/server",
-                        "-w",
-                        "/server",
-                        "eclipse-temurin:25",
-                        "java",
-                        "-Xms" + config.memory,
-                        "-Xmx" + config.memory,
-                        "-jar",
-                        "server.jar",
-                        "nogui"
-                ));
-
-                Process runProcess = new ProcessBuilder(command)
-                        .redirectError(ProcessBuilder.Redirect.INHERIT)
-                        .start();
-
-                String containerId = new String(
-                        runProcess.getInputStream().readAllBytes(),
-                        StandardCharsets.UTF_8
-                ).trim();
-
-                int exitCode = runProcess.waitFor();
-
-                if (exitCode != 0) {
-                    return new ServerLaunchResult(ServerState.FAILED, "Docker failed", null, CompletableFuture.failedFuture(new IllegalStateException("Docker failed")));
-                }
-
-                String port = getDockerPort(containerId);
-
-                RunningServer runningServer = new RunningServer(
-                        instanceName,
-                        name,
-                        singleton,
-                        containerId,
-                        containerName,
-                        serverDir,
-                        port,
-                        new CompletableFuture<>()
-                );
-
-                RUNNING_SERVERS.put(instanceName, runningServer);
-
-                for (int i = 0; i < 30; i++) {
-                    ServerState state = getDockerState(containerId);
-
-                    if (state == ServerState.RUNNING) {
-
-                        CompletableFuture<RunningServer> future = registerServerWhenStarted(
+                    try {
+                        waitForServerReady(runningServer);
+                        ProxyServerManager.getInstance().register(
                                 runningServer.name(),
                                 runningServer.templateName(),
                                 runningServer.containerName(),
-                                runningServer
+                                25565
                         );
-
+                        runningServer.future().complete(runningServer);
 
                         return new ServerLaunchResult(
                                 ServerState.RUNNING,
-                                "Started Successfully on port " + port,
+                                "Started Successfully on port " + runningServer.port(),
                                 runningServer,
-                                future
+                                runningServer.future()
                         );
-                    }
+                    } catch (IllegalStateException e) {
+                        String logs = dockerLogs(runningServer.containerId(), 200);
 
-                    if (state == ServerState.CRASHED || state == ServerState.STOPPED) {
+                        if (attempt == 1 && isMojangHashFailure(e, logs)) {
+                            System.out.println("Detected corrupt Mojang download cache. Cleaning cache and retrying...");
+                            removeContainer(runningServer.containerName());
+                            RUNNING_SERVERS.remove(runningServer.name());
+                            deleteMojangDownloadCache(serverDir);
+                            if (!singleton) {
+                                deleteMojangDownloadCache(TEMPLATES_DIR.resolve(name));
+                                Main.deleteRecursive(serverDir);
+                                serverDir = createInstance(name, instanceName);
+                            }
+                            continue;
+                        }
+
+                        runningServer.future().completeExceptionally(e);
+
                         return new ServerLaunchResult(
                                 ServerState.CRASHED,
-                                "Crashed :(",
+                                "Crashed: " + e.getMessage(),
                                 runningServer,
-                                CompletableFuture.failedFuture(new IllegalStateException("Crashed :("))
+                                runningServer.future()
                         );
                     }
-
-                    Thread.sleep(1000);
                 }
 
                 return new ServerLaunchResult(
-                        ServerState.TIMEOUT,
-                        "Startup Timeout",
+                        ServerState.FAILED,
+                        "Failed to start server",
                         runningServer,
-                        CompletableFuture.failedFuture(new IllegalStateException("Startup Timeout"))
+                        CompletableFuture.failedFuture(new IllegalStateException("Failed to start server"))
                 );
             } catch (Exception e) {
                 return new ServerLaunchResult(
@@ -809,6 +773,85 @@ try = [
                 );
             }
         });
+    }
+
+    private static RunningServer startDockerServer(
+            String templateName,
+            boolean singleton,
+            String instanceName,
+            Path serverDir,
+            String containerName,
+            ServerConfig config
+    ) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>(DOCKER_BASE_ARGS);
+
+        command.addAll(List.of(
+                "--name",
+                containerName,
+                "-p",
+                ":25565",
+                "-v",
+                serverDir.toAbsolutePath() + ":/server",
+                "-w",
+                "/server",
+                "eclipse-temurin:25",
+                "java",
+                "-Xms" + config.memory,
+                "-Xmx" + config.memory,
+                "-jar",
+                "server.jar",
+                "nogui"
+        ));
+
+        Process runProcess = new ProcessBuilder(command)
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .start();
+
+        String containerId = new String(
+                runProcess.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8
+        ).trim();
+
+        int exitCode = runProcess.waitFor();
+
+        if (exitCode != 0) {
+            throw new IllegalStateException("Docker failed");
+        }
+
+        RunningServer runningServer = new RunningServer(
+                instanceName,
+                templateName,
+                singleton,
+                containerId,
+                containerName,
+                serverDir,
+                getDockerPort(containerId),
+                new CompletableFuture<>()
+        );
+
+        RUNNING_SERVERS.put(instanceName, runningServer);
+        return runningServer;
+    }
+
+    private static void waitForServerReady(RunningServer runningServer) throws InterruptedException {
+        long timeoutAt = System.currentTimeMillis() + 120_000;
+
+        while (System.currentTimeMillis() < timeoutAt) {
+            ServerState state = getDockerState(runningServer.containerId());
+
+            if (state == ServerState.CRASHED || state == ServerState.STOPPED || state == ServerState.FAILED) {
+                String logs = dockerLogs(runningServer.containerId(), 200);
+                throw new IllegalStateException("Server crashed while starting: " + firstUsefulLogLine(logs));
+            }
+
+            if (runningServer.isReady()) {
+                return;
+            }
+
+            Thread.sleep(1000);
+        }
+
+        throw new IllegalStateException("Server did not become ready in time");
     }
 
     private static CompletableFuture<RunningServer> registerServerWhenStarted(String name, String base, String host, RunningServer runningServer) {
@@ -1145,6 +1188,89 @@ try = [
         return getDockerPort(containerId, 25565);
     }
 
+    private static String dockerLogs(String containerId, int tail) {
+        try {
+            Process process = new ProcessBuilder(
+                    "docker",
+                    "logs",
+                    "--tail",
+                    String.valueOf(tail),
+                    containerId
+            ).redirectErrorStream(true).start();
+
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            process.waitFor();
+            return output;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static void removeContainer(String containerName) {
+        try {
+            Process process = new ProcessBuilder(
+                    "docker",
+                    "rm",
+                    "-f",
+                    containerName
+            ).redirectErrorStream(true).start();
+
+            process.getInputStream().readAllBytes();
+            process.waitFor();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean isMojangHashFailure(Throwable error, String logs) {
+        String text = (String.valueOf(error.getMessage()) + "\n" + logs).toLowerCase(Locale.ROOT);
+
+        return text.contains("hash check failed")
+                && (text.contains("mojang_") || text.contains("downloaded file"));
+    }
+
+    private static void deleteMojangDownloadCache(Path serverDir) {
+        if (!Files.exists(serverDir)) {
+            return;
+        }
+
+        try (var files = Files.walk(serverDir)) {
+            files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().startsWith("mojang_"))
+                    .filter(path -> path.getFileName().toString().endsWith(".jar"))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                            System.out.println("Deleted corrupt cache file: " + path.getFileName());
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+        } catch (UncheckedIOException e) {
+            throw new RuntimeException("Failed to clean Mojang download cache", e);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to scan Mojang download cache", e);
+        }
+    }
+
+    private static String firstUsefulLogLine(String logs) {
+        if (logs == null || logs.isBlank()) {
+            return "no logs available";
+        }
+
+        return logs.lines()
+                .map(String::trim)
+                .filter(line -> !line.isBlank())
+                .filter(line -> line.toLowerCase(Locale.ROOT).contains("exception")
+                        || line.toLowerCase(Locale.ROOT).contains("error")
+                        || line.toLowerCase(Locale.ROOT).contains("failed"))
+                .reduce((first, second) -> second)
+                .orElseGet(() -> logs.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isBlank())
+                        .reduce((first, second) -> second)
+                        .orElse("no useful logs available"));
+    }
+
     private static String sanitizeDockerName(String name) {
         return name.replaceAll("[^a-zA-Z0-9_.-]", "-");
     }
@@ -1253,152 +1379,17 @@ try = [
         }
 
         try {
-            List<LanternaUi.Option> options = servers.values().stream()
+            List<ConsolePrompts.Option> options = servers.values().stream()
                     .sorted(Comparator.comparing(RunningServer::name))
-                    .map(server -> new LanternaUi.Option(
+                    .map(server -> new ConsolePrompts.Option(
                             server.name(),
                             server.name() + " | template=" + server.templateName() + " | port=" + server.port()
                     ))
                     .toList();
 
-            return LanternaUi.select("Server Logs", "Select server", options);
+            return ConsolePrompts.select("Server Logs", "Select server", options);
         } catch (Exception e) {
             throw new RuntimeException("Failed to select server", e);
-        }
-    }
-
-    public static void showLiveLogsBook(RunningServer server) {
-        Process process = null;
-        Process commandProcess = null;
-
-        try {
-            List<String> lines = new CopyOnWriteArrayList<>();
-
-            Process snapshotProcess = new ProcessBuilder(
-                    "docker",
-                    "logs",
-                    "--tail",
-                    "200",
-                    server.containerName()
-            ).redirectErrorStream(true).start();
-
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(snapshotProcess.getInputStream(), StandardCharsets.UTF_8)
-            )) {
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    lines.add(line);
-                }
-            }
-
-            snapshotProcess.waitFor();
-
-            process = new ProcessBuilder(
-                    "docker",
-                    "logs",
-                    "-f",
-                    "--tail",
-                    "0",
-                    server.containerName()
-            ).redirectErrorStream(true).start();
-
-            Process finalProcess = process;
-
-            Thread logThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(finalProcess.getInputStream(), StandardCharsets.UTF_8)
-                )) {
-                    String line;
-
-                    while ((line = reader.readLine()) != null) {
-                        lines.add(line);
-
-                        while (lines.size() > 1000) {
-                            lines.remove(0);
-                        }
-                    }
-                } catch (Exception ignored) {
-                }
-            });
-
-            logThread.setDaemon(true);
-            logThread.start();
-
-            commandProcess = new ProcessBuilder(
-                    "docker",
-                    "attach",
-                    "--sig-proxy=false",
-                    server.containerName()
-            ).redirectErrorStream(true).start();
-
-            Process finalCommandProcess = commandProcess;
-
-            Thread commandOutputThread = new Thread(() -> {
-                try (InputStream input = finalCommandProcess.getInputStream()) {
-                    input.transferTo(OutputStream.nullOutputStream());
-                } catch (Exception ignored) {
-                }
-            });
-
-            commandOutputThread.setDaemon(true);
-            commandOutputThread.start();
-
-            BufferedWriter commandWriter = new BufferedWriter(
-                    new OutputStreamWriter(commandProcess.getOutputStream(), StandardCharsets.UTF_8)
-            );
-
-            LanternaUi.showLiveLogs(
-                    "Logs: " + server.name() + " | Port: " + server.port() + " | Container: " + server.containerName(),
-                    lines,
-                    command -> {
-                        commandWriter.write(command);
-                        commandWriter.newLine();
-                        commandWriter.flush();
-                    },
-                    finalProcess::isAlive,
-                    () -> dockerStats(server)
-            );
-
-            if (process.isAlive()) {
-                process.destroy();
-            }
-            if (commandProcess.isAlive()) {
-                commandProcess.destroy();
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to show live logs", e);
-        }
-    }
-
-    private static String dockerStats(RunningServer server) {
-        try {
-            Process process = new ProcessBuilder(
-                    "docker",
-                    "stats",
-                    "--no-stream",
-                    "--format",
-                    "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}",
-                    server.containerName()
-            ).redirectErrorStream(true).start();
-
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-
-            if (process.waitFor() != 0 || output.isBlank()) {
-                return "Stats unavailable";
-            }
-
-            String[] parts = output.split("\\|", 3);
-
-            if (parts.length != 3) {
-                return "Stats unavailable";
-            }
-
-            return "CPU " + parts[0].trim()
-                    + " | RAM " + parts[1].trim()
-                    + " | Network " + parts[2].trim();
-        } catch (Exception e) {
-            return "Stats unavailable";
         }
     }
 
@@ -1426,46 +1417,46 @@ try = [
     public static String launchCreationWizard(String initialName) {
         try {
             String name = initialName == null
-                    ? LanternaUi.input("Create Server", "How do you want to call the Server?", "", false)
+                    ? ConsolePrompts.input("Create Server", "How do you want to call the Server?", "", false)
                     : initialName;
-            String serverType = LanternaUi.select(
+            String serverType = ConsolePrompts.select(
                     "Create Server",
                     "What server type?",
                     List.of(
-                            new LanternaUi.Option("paper", "Paper"),
-                            new LanternaUi.Option("folia", "Folia"),
-                            new LanternaUi.Option("vanilla", "Vanilla (Unsafe)")
+                            new ConsolePrompts.Option("paper", "Paper"),
+                            new ConsolePrompts.Option("folia", "Folia"),
+                            new ConsolePrompts.Option("vanilla", "Vanilla (Unsafe)")
                     )
             );
-            String memory = LanternaUi.input(
+            String memory = ConsolePrompts.input(
                     "Create Server",
                     "How much memory should the server use? Example: 1G / 2048M",
                     "1G",
                     false
             );
-            String worldType = LanternaUi.select(
+            String worldType = ConsolePrompts.select(
                     "Create Server",
                     "What world type?",
                     List.of(
-                            new LanternaUi.Option("default", "Default"),
-                            new LanternaUi.Option("superflat", "Superflat"),
-                            new LanternaUi.Option("large_biomes", "Large Biomes"),
-                            new LanternaUi.Option("amplified", "Amplified")
+                            new ConsolePrompts.Option("default", "Default"),
+                            new ConsolePrompts.Option("superflat", "Superflat"),
+                            new ConsolePrompts.Option("large_biomes", "Large Biomes"),
+                            new ConsolePrompts.Option("amplified", "Amplified")
                     )
             );
-            String seed = LanternaUi.input("Create Server", "World seed, leave empty for random", "", false);
+            String seed = ConsolePrompts.input("Create Server", "World seed, leave empty for random", "", false);
 
             String superflatType = null;
 
             if (worldType.equals("superflat")) {
-                superflatType = LanternaUi.select(
+                superflatType = ConsolePrompts.select(
                         "Create Server",
                         "What superflat type?",
                         List.of(
-                                new LanternaUi.Option("default", "Default Superflat"),
-                                new LanternaUi.Option("the_void", "The Void"),
-                                new LanternaUi.Option("redstone_ready", "Redstone Ready"),
-                                new LanternaUi.Option("water_world", "Water World")
+                                new ConsolePrompts.Option("default", "Default Superflat"),
+                                new ConsolePrompts.Option("the_void", "The Void"),
+                                new ConsolePrompts.Option("redstone_ready", "Redstone Ready"),
+                                new ConsolePrompts.Option("water_world", "Water World")
                         )
                 );
             }
@@ -1474,16 +1465,16 @@ try = [
                 seed = String.valueOf(new Random().nextLong());
             }
 
-            String version = LanternaUi.select(
+            String version = ConsolePrompts.select(
                     "Create Server",
                     "What version do you Want?",
                     SERVER_TO_VERSION_TO_URL_MAP.get(serverType)
                             .keySet()
                             .stream()
-                            .map(value -> new LanternaUi.Option(value, value))
+                            .map(value -> new ConsolePrompts.Option(value, value))
                             .toList()
             );
-            boolean eula = LanternaUi.confirm(
+            boolean eula = ConsolePrompts.confirm(
                     "Create Server",
                     "Do you accept the Mojang EULA? (https://www.minecraft.net/en-us/eula)"
             );
