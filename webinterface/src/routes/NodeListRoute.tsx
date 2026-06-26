@@ -3,9 +3,11 @@ import {useNavigate} from "react-router";
 import Header from "../components/Header.tsx";
 import {getNodes, type Node} from "../lib/api.ts";
 import styles from "./NodeListRoute.module.css";
+import {useI18n} from "../lib/i18n.ts";
 
 function NodeListRoute(){
     const navigate = useNavigate();
+    const {t} = useI18n();
     const [nodes, setNodes] = useState<Node[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -38,15 +40,15 @@ function NodeListRoute(){
     return (
         <>
             <Header>
-                <span className={styles.headerTitle}>Nodes</span>
+                <span className={styles.headerTitle}>{t("page.nodes")}</span>
             </Header>
             <main className={`${styles.page} background`}>
                 <section className={styles.panel}>
-                    <h1>Select a node</h1>
-                    {loading && <p>Loading nodes...</p>}
+                    <h1>{t("node.select")}</h1>
+                    {loading && <p>{t("state.loading_nodes")}</p>}
                     {error && <p role="alert">{error}</p>}
                     {!loading && !error && nodes.length === 0 && (
-                        <p>No linked nodes available.</p>
+                        <p>{t("node.empty")}</p>
                     )}
                     <div className={styles.list}>
                         {nodes.map((node) => (

@@ -1,23 +1,36 @@
 package net.villagerzock.backend;
 
 import net.villagerzock.backend.controller.ProxyController;
+import net.villagerzock.backend.controller.NodeRoleController;
 import net.villagerzock.backend.controller.ServerController;
 import net.villagerzock.backend.controller.TemplateController;
+import net.villagerzock.backend.dto.NodeRoleResponse;
+import net.villagerzock.backend.security.NodePermission;
 import net.villagerzock.backend.service.MetricsService;
 import net.villagerzock.backend.service.NodeHandshakeClient;
+import net.villagerzock.backend.service.NodePermissionService;
+import net.villagerzock.backend.service.NodeRoleService;
 import net.villagerzock.backend.service.ServerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.NetworkPointDto;
@@ -26,6 +39,8 @@ import net.villagerzock.backend.dto.ServerTemplateDto;
 
 class ApiContractTests {
     private MockMvc mockMvc;
+    private NodePermissionService permissions;
+    private NodeRoleService nodeRoleService;
 
     @BeforeEach
     void setUp() {
@@ -43,10 +58,13 @@ class ApiContractTests {
                 new NetworkPointDto("01.06.2026", 250.0, 125.0)));
         ServerService serverService = new ServerService(handshakeClient);
         MetricsService metricsService = new MetricsService(handshakeClient);
+        permissions = mock(NodePermissionService.class);
+        nodeRoleService = mock(NodeRoleService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(
-                new ServerController(serverService, metricsService),
+                new ServerController(serverService, metricsService, permissions),
                 new ProxyController(metricsService),
-                new TemplateController(serverService))
+                new TemplateController(serverService, permissions),
+                new NodeRoleController(nodeRoleService, permissions))
                 .build();
     }
 
@@ -83,5 +101,26 @@ class ApiContractTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].inbound").isNumber())
                 .andExpect(jsonPath("$[0].outbound").isNumber());
+
+        verifyNoInteractions(permissions);
+    }
+
+    @Test
+    void createsRolesWithModifyPermission() throws Exception {
+        when(nodeRoleService.createRole(1L, "Moderator", 24))
+                .thenReturn(new NodeRoleResponse(3L, "Moderator", 24, Map.of(), Map.of(), 2L));
+
+        mockMvc.perform(post("/api/roles")
+                        .requestAttr("cloudcore.nodeId", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Moderator","permissions":24}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Moderator"))
+                .andExpect(jsonPath("$.permissions").value(24))
+                .andExpect(jsonPath("$.previousRoleId").value(2));
+
+        verify(permissions).require(nullable(Authentication.class), eq(1L), eq(NodePermission.ROLES_ADD));
     }
 }

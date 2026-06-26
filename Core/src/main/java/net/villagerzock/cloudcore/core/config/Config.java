@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class Config {
 
@@ -27,6 +29,9 @@ public class Config {
     public LobbyConfig lobby = new LobbyConfig();
 
     @Getter
+    public Map<String, MatchmakingConfiguration> matchmaking = new LinkedHashMap<>();
+
+    @Getter
     public boolean useWebPanel = true;
 
     public void save() {
@@ -39,12 +44,10 @@ public class Config {
         Yaml yaml = new Yaml(representer,options);
         try {
             Files.createDirectories(path.getParent());
-            instance = new Config();
-            instance.mariadb = launchDatabaseConfigWizard();
-
+            instance = this;
 
             try (Writer writer = Files.newBufferedWriter(path)) {
-                yaml.dump(instance, writer);
+                yaml.dump(this, writer);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -57,7 +60,9 @@ public class Config {
         @Getter
         public int port = 3306;
         @Getter
-        public String user = "root";
+        public String database = "cloudcore_backend";
+        @Getter
+        public String user = "cloudcore_backend";
         @Getter
         public String password = "password";
     }
@@ -93,6 +98,32 @@ public class Config {
         public Integer amount = 1;
     }
 
+    public static class MatchmakingConfiguration {
+        @Getter
+        public String template = "";
+
+        @Getter
+        public int maxAmountOfServers = 1;
+
+        @Getter
+        public int maxPlayersPerServer = 16;
+
+        @Getter
+        public int playersPerTeam = 1;
+
+        @Getter
+        public boolean canRejoin = true;
+
+        @Getter
+        public boolean splitSameQueue = false;
+
+        @Getter
+        public boolean singleQueueServerOnSplit = false;
+
+        @Getter
+        public int maxMmvDiff = 100;
+    }
+
     public static void load() {
         Path path = ServerManager.BASE_DIR.resolve("config.yml");
         DumperOptions options = new DumperOptions();
@@ -120,6 +151,9 @@ public class Config {
             try (InputStream in = Files.newInputStream(path)) {
                 instance = yaml.loadAs(in, Config.class);
             }
+            if (instance.matchmaking == null) {
+                instance.matchmaking = new LinkedHashMap<>();
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config", e);
         }
@@ -127,12 +161,14 @@ public class Config {
 
     private static MariaDb launchDatabaseConfigWizard() throws IOException {
         String port = ConsolePrompts.input("Setup Database", "What Port is MariaDB running on?", "3306", false);
-        String user = ConsolePrompts.input("Setup Database", "What is the name of the MariaDB User?", "cloudcore", false);
+        String database = ConsolePrompts.input("Setup Database", "What is the name of the MariaDB Database?", "cloudcore_backend", false);
+        String user = ConsolePrompts.input("Setup Database", "What is the name of the MariaDB User?", "cloudcore_backend", false);
         String password = ConsolePrompts.input("Setup Database", "What is the Password?", "", true);
 
         MariaDb db = new MariaDb();
 
         db.port = Integer.parseInt(port);
+        db.database = database;
         db.user = user;
         db.password = password;
 

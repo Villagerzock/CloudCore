@@ -3,6 +3,7 @@ import TextInput from "./TextInput.tsx";
 import {connectLiveConsole, type LiveConsoleConnection} from "../lib/LiveConsoleConnection.ts";
 import {type FormEvent, useEffect, useMemo, useRef, useState} from "react";
 import AnsiImport from "ansi-to-react";
+import {useI18n} from "../lib/i18n.ts";
 
 type AnsiComponent = typeof AnsiImport;
 const Ansi = typeof AnsiImport === "function"
@@ -16,6 +17,7 @@ type LiveConsoleProps = {
 }
 
 function LiveConsole({ width = "100%", height = "100%", consoleId }: LiveConsoleProps){
+    const {t} = useI18n();
     const MAX_LINES = 1000;
 
     const outputRef = useRef<HTMLPreElement>(null);
@@ -78,7 +80,7 @@ function LiveConsole({ width = "100%", height = "100%", consoleId }: LiveConsole
         <div className={styles.container} style={{ width, height }}>
 		<pre ref={outputRef} className={styles.console}>
 			<Ansi className={styles.ansi}>
-                {consoleId === null ? "Connecting..." : lines.length > 0 ? `${lines.join("\n")}\n` : ""}
+                {consoleId === null ? t("state.connecting") : lines.length > 0 ? `${lines.join("\n")}\n` : ""}
             </Ansi>
 		</pre>
 
@@ -87,8 +89,8 @@ function LiveConsole({ width = "100%", height = "100%", consoleId }: LiveConsole
                     <TextInput
                         value={command}
                         onChange={(event) => setCommand(event.target.value)}
-                        placeholder="Enter command..."
-                        aria-label="Console command"
+                        placeholder={t("console.command_placeholder")}
+                        aria-label={t("console.command_label")}
                     />
                 </form>
             )}

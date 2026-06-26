@@ -52,7 +52,7 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                 new UsernamePasswordAuthenticationToken(
                         user.getUsername(),
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
+                        List.of(new SimpleGrantedAuthority("USER")));
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }

@@ -2,5 +2,114 @@
     display: flex;
     flex-direction: column;
     padding: 16px;
+    gap: 6px;
     align-items: center;
+}
+
+.error {
+    width: min(100%, 50em);
+    margin: 12px auto 0;
+    color: #ffb4b4;
+}
+
+.scrollContainer {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 32px;
+    box-sizing: border-box;
+}
+
+.listHeader {
+    width: min(100%, 50em);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.listHeader h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.itemShell {
+    width: min(100%, 50em);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.roleDndBoundary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+.addForm {
+    width: min(100%, 50em);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 82%);
+}
+
+.editForm {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--accent), transparent 70%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 82%);
+    box-sizing: border-box;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.field input {
+    min-height: 36px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 65%);
+    background: color-mix(in srgb, black, transparent 74%);
+    color: inherit;
+    padding: 0 10px;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+@media (max-width: 720px) {
+    .addForm,
+    .editForm {
+        grid-template-columns: 1fr;
+    }
+
+    .formActions {
+        justify-content: stretch;
+    }
+
+    .formActions > * {
+        flex: 1;
+    }
 }

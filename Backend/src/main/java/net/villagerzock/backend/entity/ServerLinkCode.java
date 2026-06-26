@@ -18,7 +18,7 @@ import java.time.Instant;
 @Table(name = "server_link_codes", indexes = {
         @Index(name = "idx_server_link_codes_hash", columnList = "code_hash", unique = true),
         @Index(name = "idx_server_link_codes_expiry", columnList = "expires_at"),
-        @Index(name = "idx_server_link_codes_server", columnList = "server_id")
+        @Index(name = "idx_server_link_codes_node", columnList = "node_id")
 })
 public class ServerLinkCode {
     @Id
@@ -26,8 +26,8 @@ public class ServerLinkCode {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "server_id", nullable = false)
-    private CloudCoreServer server;
+    @JoinColumn(name = "node_id", nullable = false)
+    private CloudCoreNode node;
 
     @Column(name = "code_hash", nullable = false, unique = true, length = 64)
     private String codeHash;
@@ -44,8 +44,8 @@ public class ServerLinkCode {
     protected ServerLinkCode() {
     }
 
-    public ServerLinkCode(CloudCoreServer server, String codeHash, Instant expiresAt) {
-        this.server = server;
+    public ServerLinkCode(CloudCoreNode node, String codeHash, Instant expiresAt) {
+        this.node = node;
         this.codeHash = codeHash;
         this.expiresAt = expiresAt;
     }
@@ -55,8 +55,8 @@ public class ServerLinkCode {
         createdAt = Instant.now();
     }
 
-    public CloudCoreServer getServer() {
-        return server;
+    public CloudCoreNode getNode() {
+        return node;
     }
 
     public String getCodeHash() {

@@ -5,9 +5,11 @@ import LiveConsole from "../components/LiveConsole.tsx";
 import {useServerMetrics} from "../hooks/useServerMetrics.ts";
 import {getServerByName, type Server} from "../lib/api.ts";
 import styles from "./ServerRoute.module.css";
+import {useI18n} from "../lib/i18n.ts";
 
 function ServerRoute(){
     const { name } = useParams<{ name: string }>();
+    const {t} = useI18n();
     const serverName = name?.trim() || null;
     const { playerCountData, error: metricsError } = useServerMetrics(serverName);
     const [result, setResult] = useState<{
@@ -40,7 +42,7 @@ function ServerRoute(){
     }, [serverName]);
 
     if (serverName === null) {
-        return <p role="alert">Invalid server name</p>;
+        return <p role="alert">{t("server.invalid_name")}</p>;
     }
 
     const currentResult = result?.name === serverName ? result : null;
@@ -50,7 +52,7 @@ function ServerRoute(){
     }
 
     if (!currentResult?.server) {
-        return <p>Loading server...</p>;
+        return <p>{t("state.loading_server")}</p>;
     }
 
     const server = currentResult.server;
@@ -62,13 +64,13 @@ function ServerRoute(){
             </div>
             <div className={styles.stats}>
                 <h2>{server.name}</h2>
-                <span>Template: {server.template}</span>
-                <span>Online: {server.online}/{server.max}</span>
+                <span>{t("field.template")}: {server.template}</span>
+                <span>{t("metrics.online")}: {server.online}/{server.max}</span>
                 {metricsError && <p role="alert">{metricsError}</p>}
                 <LineChart
                     data={playerCountData}
-                    keyName="Online"
-                    title="Playercount"
+                    keyName={t("metrics.online")}
+                    title={t("metrics.playercount")}
                     width={350}
                     height={175}
                 />

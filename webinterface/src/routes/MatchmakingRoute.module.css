@@ -1,0 +1,103 @@
+.page {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.header {
+    width: min(100%, 1100px);
+    margin: 0 auto 18px;
+    text-align: left;
+}
+
+.header h1 {
+    margin: 0;
+}
+
+.error {
+    width: min(100%, 1100px);
+    margin: 0 auto 14px;
+    color: #ffb4b4;
+    text-align: left;
+}
+
+.grid {
+    width: min(100%, 1100px);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+    align-items: start;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 84%);
+    text-align: left;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.cardHeader h2 {
+    margin: 0;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.field input,
+.field select {
+    min-height: 38px;
+    min-width: 0;
+    padding: 0 10px;
+    color: inherit;
+    background: color-mix(in srgb, black, transparent 74%);
+    border: 1px solid color-mix(in srgb, currentColor, transparent 65%);
+    border-radius: 6px;
+}
+
+.numberGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+    .page {
+        padding: 16px;
+    }
+
+    .grid,
+    .numberGrid {
+        grid-template-columns: 1fr;
+    }
+}

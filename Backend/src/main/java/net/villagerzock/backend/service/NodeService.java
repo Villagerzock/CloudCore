@@ -2,7 +2,6 @@ package net.villagerzock.backend.service;
 
 import net.villagerzock.backend.dto.NodeResponse;
 import net.villagerzock.backend.entity.CloudCoreNode;
-import net.villagerzock.backend.entity.CloudCoreServer;
 import net.villagerzock.backend.repository.CloudCoreNodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,12 +24,11 @@ public class NodeService {
     }
 
     private NodeResponse toResponse(CloudCoreNode node) {
-        CloudCoreServer server = node.getServer();
         return new NodeResponse(
                 node.getId(),
-                server.getId(),
-                server.getName(),
-                server.getIpAddress(),
-                server.getLinkedAt());
+                node.getPublicId(),
+                node.getName(),
+                node.getIpAddress(),
+                node.getLinkedAt());
     }
 }

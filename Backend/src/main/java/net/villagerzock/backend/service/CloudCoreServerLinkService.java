@@ -2,14 +2,17 @@ package net.villagerzock.backend.service;
 
 import net.villagerzock.backend.dto.CloudCoreServerResponse;
 import net.villagerzock.backend.dto.LinkCodeResponse;
-import net.villagerzock.backend.entity.CloudCoreServer;
 import net.villagerzock.backend.entity.CloudCoreNode;
+import net.villagerzock.backend.entity.NodeRole;
+import net.villagerzock.backend.entity.NodeUser;
 import net.villagerzock.backend.entity.ServerLinkCode;
 import net.villagerzock.backend.entity.UserAccount;
-import net.villagerzock.backend.repository.CloudCoreServerRepository;
 import net.villagerzock.backend.repository.CloudCoreNodeRepository;
+import net.villagerzock.backend.repository.NodeRoleRepository;
+import net.villagerzock.backend.repository.NodeUserRepository;
 import net.villagerzock.backend.repository.ServerLinkCodeRepository;
 import net.villagerzock.backend.repository.UserAccountRepository;
+import net.villagerzock.backend.security.NodePermission;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -37,18 +40,20 @@ public class CloudCoreServerLinkService {
     private static final int MAX_GENERATION_ATTEMPTS = 20;
 
     private final UserAccountRepository users;
-    private final CloudCoreServerRepository servers;
-    private final ServerLinkCodeRepository linkCodes;
     private final CloudCoreNodeRepository nodes;
+    private final NodeRoleRepository nodeRoles;
+    private final NodeUserRepository nodeUsers;
+    private final ServerLinkCodeRepository linkCodes;
     private final LinkAttemptLimiter attemptLimiter;
     private final SecureRandom secureRandom = new SecureRandom();
     private final byte[] linkCodeSecret;
 
     public CloudCoreServerLinkService(
             UserAccountRepository users,
-            CloudCoreServerRepository servers,
-            ServerLinkCodeRepository linkCodes,
             CloudCoreNodeRepository nodes,
+            NodeRoleRepository nodeRoles,
+            NodeUserRepository nodeUsers,
+            ServerLinkCodeRepository linkCodes,
             LinkAttemptLimiter attemptLimiter,
             @Value("${cloudcore.link-code-secret}") String linkCodeSecret
     ) {
@@ -56,9 +61,10 @@ public class CloudCoreServerLinkService {
             throw new IllegalArgumentException("LINK_CODE_SECRET must contain at least 32 characters");
         }
         this.users = users;
-        this.servers = servers;
-        this.linkCodes = linkCodes;
         this.nodes = nodes;
+        this.nodeRoles = nodeRoles;
+        this.nodeUsers = nodeUsers;
+        this.linkCodes = linkCodes;
         this.attemptLimiter = attemptLimiter;
         this.linkCodeSecret = linkCodeSecret.getBytes(StandardCharsets.UTF_8);
     }
@@ -67,40 +73,43 @@ public class CloudCoreServerLinkService {
     public CloudCoreServerResponse createServer(String username, String name, String ipAddress) {
         UserAccount user = requireUser(username);
         String canonicalIp = canonicalizeIp(ipAddress);
-        if (servers.existsByIpAddress(canonicalIp)) {
+        if (nodes.existsByIpAddress(canonicalIp)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "A server with this IP address already exists");
+                    "A node with this IP address already exists");
         }
 
         try {
-            CloudCoreServer server = servers.saveAndFlush(new CloudCoreServer(
-                    user,
-                    name.trim(),
-                    canonicalIp));
-            return toResponse(server);
+            CloudCoreNode node = nodes.saveAndFlush(new CloudCoreNode(name.trim(), canonicalIp));
+            node.setOwner(user);
+            NodeRole owner = nodeRoles.save(new NodeRole(node, "Owner", NodePermission.ALL));
+            NodeRole defaultUser = new NodeRole(node, "User", NodePermission.DEFAULT_USER);
+            defaultUser.setPreviousRole(owner);
+            nodeRoles.save(defaultUser);
+            nodeUsers.save(new NodeUser(node, user, owner));
+            return toResponse(node);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "A server with this IP address already exists",
+                    "A node with this IP address already exists",
                     exception);
         }
     }
 
     @Transactional
-    public LinkCodeResponse generateCode(String username, UUID serverId) {
-        CloudCoreServer server = servers.findByIdForUpdate(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Server not found"));
-        if (!server.getUser().getUsername().equalsIgnoreCase(username)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Server not found");
+    public LinkCodeResponse generateCode(String username, UUID nodePublicId) {
+        CloudCoreNode node = nodes.findByPublicIdForUpdate(nodePublicId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
+        if (!nodes.isMember(node.getId(), username)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found");
         }
-        if (server.isLinked()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Server is already linked");
+        if (node.isLinked()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Node is already linked");
         }
 
         Instant now = Instant.now();
         Instant expiresAt = now.plus(CODE_LIFETIME);
-        linkCodes.consumeActiveCodesForServer(serverId, now);
+        linkCodes.consumeActiveCodesForNode(node.getId(), now);
         linkCodes.deleteByExpiresAtBefore(now.minus(CODE_LIFETIME));
 
         for (int attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
@@ -110,8 +119,8 @@ public class CloudCoreServerLinkService {
                 continue;
             }
 
-            linkCodes.save(new ServerLinkCode(server, codeHash, expiresAt));
-            return new LinkCodeResponse(serverId, code, expiresAt);
+            linkCodes.save(new ServerLinkCode(node, codeHash, expiresAt));
+            return new LinkCodeResponse(node.getPublicId(), code, expiresAt);
         }
 
         throw new ResponseStatusException(
@@ -128,22 +137,21 @@ public class CloudCoreServerLinkService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Invalid or expired link code"));
-        CloudCoreServer server = linkCode.getServer();
+        CloudCoreNode node = linkCode.getNode();
 
-        if (!server.getIpAddress().equals(canonicalRequestIp)) {
+        if (!node.getIpAddress().equals(canonicalRequestIp)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Request IP does not match the registered server IP");
+                    "Request IP does not match the registered node IP");
         }
-        if (server.isLinked()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Server is already linked");
+        if (node.isLinked()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Node is already linked");
         }
 
         linkCode.consume(now);
-        server.markLinked(now);
-        nodes.save(new CloudCoreNode(server));
+        node.markLinked(now);
         attemptLimiter.clear(canonicalRequestIp);
-        return toResponse(server);
+        return toResponse(node);
     }
 
     private UserAccount requireUser(String username) {
@@ -163,14 +171,14 @@ public class CloudCoreServerLinkService {
         }
     }
 
-    private CloudCoreServerResponse toResponse(CloudCoreServer server) {
+    private CloudCoreServerResponse toResponse(CloudCoreNode node) {
         return new CloudCoreServerResponse(
-                server.getId(),
-                server.getName(),
-                server.getIpAddress(),
-                server.isLinked(),
-                server.getCreatedAt(),
-                server.getLinkedAt());
+                node.getPublicId(),
+                node.getName(),
+                node.getIpAddress(),
+                node.isLinked(),
+                node.getCreatedAt(),
+                node.getLinkedAt());
     }
 
     private String hash(String code) {

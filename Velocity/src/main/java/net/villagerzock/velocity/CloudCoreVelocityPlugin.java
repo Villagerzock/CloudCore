@@ -1,6 +1,7 @@
 package net.villagerzock.velocity;
 
 import com.google.inject.Inject;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -19,7 +20,6 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.villagerzock.velocity.command.arguments.PlayerArgumentType;
 import net.villagerzock.velocity.config.CloudCoreConfiguration;
 import net.villagerzock.velocity.service.MaintenanceService;
 import net.villagerzock.velocity.service.MetricCollectionService;
@@ -66,8 +66,8 @@ public class CloudCoreVelocityPlugin {
             try {
                 String dbHost = getEnvOrDefault("CLOUDCORE_DB_HOST", "mariadb");
                 String dbPort = getEnvOrDefault("CLOUDCORE_DB_PORT", "3306");
-                String dbName = getEnvOrDefault("CLOUDCORE_DB_NAME", "cloudcore");
-                String dbUser = getEnvOrDefault("CLOUDCORE_DB_USER", "cloudcore");
+                String dbName = getEnvOrDefault("CLOUDCORE_DB_NAME", "cloudcore_backend");
+                String dbUser = getEnvOrDefault("CLOUDCORE_DB_USER", "cloudcore_backend");
                 String dbPassword = getEnvOrDefault("CLOUDCORE_DB_PASSWORD", "");
 
                 application = new SpringApplicationBuilder(VelocitySpringBootApplication.class)
@@ -112,8 +112,13 @@ public class CloudCoreVelocityPlugin {
                                         .then(
                                                 LiteralArgumentBuilder.<CommandSource>literal("add")
                                                         .then(
-                                                                RequiredArgumentBuilder.<CommandSource,Player>argument("player",new PlayerArgumentType(proxy)).executes(context -> {
-                                                                    Player player = context.getArgument("player", Player.class);
+                                                                playerNameArgument().executes(context -> {
+                                                                    Player player = findOnlinePlayerOrNotify(
+                                                                            context.getSource(),
+                                                                            StringArgumentType.getString(context, "player"));
+                                                                    if (player == null) {
+                                                                        return 0;
+                                                                    }
 
                                                                     getCachedBeanByType(MaintenanceService.class).addPlayer(player);
 
@@ -124,8 +129,13 @@ public class CloudCoreVelocityPlugin {
                                         .then(
                                                 LiteralArgumentBuilder.<CommandSource>literal("remove")
                                                         .then(
-                                                                RequiredArgumentBuilder.<CommandSource,Player>argument("player",new PlayerArgumentType(proxy)).executes(context -> {
-                                                                    Player player = context.getArgument("player", Player.class);
+                                                                playerNameArgument().executes(context -> {
+                                                                    Player player = findOnlinePlayerOrNotify(
+                                                                            context.getSource(),
+                                                                            StringArgumentType.getString(context, "player"));
+                                                                    if (player == null) {
+                                                                        return 0;
+                                                                    }
 
                                                                     getCachedBeanByType(MaintenanceService.class).removePlayer(player);
 
@@ -136,7 +146,24 @@ public class CloudCoreVelocityPlugin {
                         )
         );
 
-        proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("maintenance").build(), cloudcoreCommand);
+        proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("cloudcore").build(), cloudcoreCommand);
+    }
+
+    private RequiredArgumentBuilder<CommandSource, String> playerNameArgument() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("player", StringArgumentType.word())
+                .suggests((context, builder) -> {
+                    for (Player player : proxy.getAllPlayers()) {
+                        builder.suggest(player.getUsername());
+                    }
+                    return builder.buildFuture();
+                });
+    }
+
+    private Player findOnlinePlayerOrNotify(CommandSource source, String username) {
+        return proxy.getPlayer(username).orElseGet(() -> {
+            source.sendMessage(Component.text("Player is not online: " + username, NamedTextColor.RED));
+            return null;
+        });
     }
 
     @Subscribe

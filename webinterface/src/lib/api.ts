@@ -14,6 +14,91 @@ export type NetworkData = ChartData & {
     outbound: number;
 }
 
+export type User = {
+    id : number;
+    username : string;
+    email: string;
+    role : string;
+    roleId : number;
+    hasAsterix: boolean;
+}
+
+export type Role = {
+    id : number;
+    name : string;
+    permissions : number;
+    permissionOptions: Record<string, boolean>;
+    permissionValues: Record<string, number>;
+}
+
+export type FileMimeType =
+// Text
+    | "text/plain"
+    | "text/html"
+    | "text/css"
+    | "text/javascript"
+    | "text/csv"
+    | "text/xml"
+
+    // Application
+    | "application/json"
+    | "application/xml"
+    | "application/pdf"
+    | "application/zip"
+    | "application/gzip"
+    | "application/javascript"
+    | "application/octet-stream"
+    | "application/x-yaml"
+
+    // Images
+    | "image/png"
+    | "image/jpeg"
+    | "image/gif"
+    | "image/webp"
+    | "image/svg+xml"
+    | "image/bmp"
+    | "image/x-icon"
+
+    // Audio
+    | "audio/mpeg"
+    | "audio/ogg"
+    | "audio/wav"
+    | "audio/webm"
+
+    // Video
+    | "video/mp4"
+    | "video/webm"
+    | "video/ogg"
+    | "video/x-msvideo"
+
+    // Fonts
+    | "font/ttf"
+    | "font/otf"
+    | "font/woff"
+    | "font/woff2";
+
+export interface FileResponse {
+    isFile: true;
+    type: FileMimeType;
+    binary: boolean;
+    contentUrl: string | null;
+    tooLarge: boolean;
+    sizeBytes: number;
+    downloadUrl: string | null;
+}
+
+export type FileInFolder = {
+    name : string;
+    isFile: boolean;
+}
+
+export interface FolderResponse {
+    isFile: false;
+    files: FileInFolder[];
+}
+
+export type FileSystemResponse = FileResponse | FolderResponse;
+
 export type PlayerMetricRange = "days" | "hours" | "minutes";
 export type NetworkMetricRange = "days" | "minutes";
 type MetricRange = PlayerMetricRange | NetworkMetricRange;
@@ -31,6 +116,36 @@ export type ServerTemplate = {
     version: string;
 }
 
+export type CreateTemplateRequest = {
+    name: string;
+    server_software: string;
+    version: string;
+    memory: string;
+    world_type: string;
+    superflat_type?: string | null;
+    seed?: string | null;
+}
+
+export type MatchmakingConfiguration = {
+    name: string;
+    template: string;
+    max_amount_of_servers: number;
+    max_players_per_server: number;
+    players_per_team: number;
+    can_rejoin: boolean;
+    split_same_queue: boolean;
+    single_queue_server_on_split: boolean;
+    max_mmv_diff: number;
+}
+
+export type MaintenanceStatus = {
+    active: boolean;
+    players: Array<{
+        uuid: string;
+        name: string | null;
+    }>;
+}
+
 export type AuthResponse = {
     token: string;
     expiresAt: string;
@@ -46,6 +161,27 @@ export type Node = {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+
+function redirectToLogin(): void {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_username");
+    if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+        window.location.replace("/login");
+    }
+}
+
+function waitForRedirect<T>(): Promise<T> {
+    return new Promise(() => {});
+}
+
+function getAuthTokenOrRedirect<T>(): string | Promise<T> {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+        redirectToLogin();
+        return waitForRedirect<T>();
+    }
+    return token;
+}
 
 async function getErrorMessage(response: Response, fallback: string): Promise<string> {
     const body = await response.json().catch(() => null) as {
@@ -101,6 +237,7 @@ export async function logout(): Promise<void> {
         }
     } finally {
         localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_username");
     }
 }
 
@@ -116,7 +253,8 @@ function appendSelectedNode(path: string): string {
 }
 
 async function getJson<T>(path: string, includeSelectedNode = true): Promise<T> {
-    const token = localStorage.getItem("auth_token");
+    const token = getAuthTokenOrRedirect<T>();
+    if (typeof token !== "string") return token;
     const requestPath = includeSelectedNode ? appendSelectedNode(path) : path;
     const response = await fetch(`${API_BASE_URL}${requestPath}`, {
         headers: {
@@ -126,9 +264,8 @@ async function getJson<T>(path: string, includeSelectedNode = true): Promise<T> 
     });
 
     if (response.status === 401) {
-        localStorage.removeItem("auth_token");
-        window.location.assign("/login");
-        throw new Error("Authentication required");
+        redirectToLogin();
+        return waitForRedirect<T>();
     }
 
     if (!response.ok) {
@@ -139,7 +276,8 @@ async function getJson<T>(path: string, includeSelectedNode = true): Promise<T> 
 }
 
 async function postJson<T>(path: string, body: object): Promise<T> {
-    const token = localStorage.getItem("auth_token");
+    const token = getAuthTokenOrRedirect<T>();
+    if (typeof token !== "string") return token;
     const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
         method: "POST",
         headers: {
@@ -151,13 +289,81 @@ async function postJson<T>(path: string, body: object): Promise<T> {
     });
 
     if (response.status === 401) {
-        localStorage.removeItem("auth_token");
-        window.location.assign("/login");
-        throw new Error("Authentication required");
+        redirectToLogin();
+        return waitForRedirect<T>();
     }
 
     if (!response.ok) {
         throw new Error(await getErrorMessage(response, `API request failed (${response.status} ${response.statusText})`));
+    }
+
+    return response.json() as Promise<T>;
+}
+
+async function patchJson<T>(path: string, body: object): Promise<T> {
+    const token = getAuthTokenOrRedirect<T>();
+    if (typeof token !== "string") return token;
+    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (response.status === 401) {
+        redirectToLogin();
+        return waitForRedirect<T>();
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `API request failed (${response.status} ${response.statusText})`));
+    }
+
+    return response.json() as Promise<T>;
+}
+
+async function deleteRequest(path: string): Promise<void> {
+    const token = getAuthTokenOrRedirect<void>();
+    if (typeof token !== "string") return token;
+    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+        method: "DELETE",
+        headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+    });
+
+    if (response.status === 401) {
+        redirectToLogin();
+        return waitForRedirect<void>();
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `Delete failed (${response.status} ${response.statusText})`));
+    }
+}
+
+async function deleteJson<T>(path: string): Promise<T> {
+    const token = getAuthTokenOrRedirect<T>();
+    if (typeof token !== "string") return token;
+    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+        method: "DELETE",
+        headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+    });
+
+    if (response.status === 401) {
+        redirectToLogin();
+        return waitForRedirect<T>();
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `Delete failed (${response.status} ${response.statusText})`));
     }
 
     return response.json() as Promise<T>;
@@ -201,8 +407,273 @@ export function getServerNetworkData(name: string): Promise<NetworkData[]> {
     return getJson(`/servers/${encodeURIComponent(name)}/metrics/network`);
 }
 
+export function getMatchmakingConfigurations(): Promise<MatchmakingConfiguration[]> {
+    return getJson("/matchmaking");
+}
+
+export function getMatchmakingTemplates(): Promise<ServerTemplate[]> {
+    return getJson("/matchmaking/templates");
+}
+
+export function createMatchmakingConfiguration(
+    configuration: MatchmakingConfiguration
+): Promise<MatchmakingConfiguration> {
+    return postJson("/matchmaking", configuration);
+}
+
+export function updateMatchmakingConfiguration(
+    name: string,
+    configuration: MatchmakingConfiguration
+): Promise<MatchmakingConfiguration> {
+    return patchJson(`/matchmaking/${encodeURIComponent(name)}`, configuration);
+}
+
+export function deleteMatchmakingConfiguration(name: string): Promise<void> {
+    return deleteRequest(`/matchmaking/${encodeURIComponent(name)}`);
+}
+
+export function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+    return getJson("/maintenance");
+}
+
+export function setMaintenanceActive(active: boolean): Promise<MaintenanceStatus> {
+    return patchJson("/maintenance", {active});
+}
+
+export function addMaintenancePlayer(player: string): Promise<MaintenanceStatus> {
+    return postJson("/maintenance/players", {player: player.trim()});
+}
+
+export function removeMaintenancePlayer(uuid: string): Promise<MaintenanceStatus> {
+    return deleteJson(`/maintenance/players/${encodeURIComponent(uuid)}`);
+}
+
 export function getServerTemplates(): Promise<ServerTemplate[]> {
     return getJson("/templates");
+}
+
+export function createTemplate(request: CreateTemplateRequest): Promise<ServerTemplate> {
+    return postJson("/templates", request);
+}
+export function getServerTemplateFileSystem(template: string,path: string): Promise<FileSystemResponse> {
+    return getJson(
+        `/templates/${template}/` +
+        path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")
+    );
+}
+
+export async function downloadTemplateFile(downloadUrl: string, fileName: string): Promise<void> {
+    const token = getAuthTokenOrRedirect<void>();
+    if (typeof token !== "string") return token;
+    const apiPath = downloadUrl.startsWith("/api") ? downloadUrl.slice(4) : downloadUrl;
+    const requestPath = apiPath.includes("?node=") || apiPath.includes("&node=")
+        ? apiPath
+        : appendSelectedNode(apiPath);
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+    });
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            redirectToLogin();
+            return waitForRedirect<void>();
+        }
+        throw new Error(await getErrorMessage(response, `Download failed (${response.status} ${response.statusText})`));
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+export async function getTemplateFileContent(contentUrl: string): Promise<string> {
+    const token = getAuthTokenOrRedirect<string>();
+    if (typeof token !== "string") return token;
+    const apiPath = contentUrl.startsWith("/api") ? contentUrl.slice(4) : contentUrl;
+    const requestPath = apiPath.includes("?node=") || apiPath.includes("&node=")
+        ? apiPath
+        : appendSelectedNode(apiPath);
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
+        headers: {
+            Accept: "text/plain,*/*",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+    });
+
+    if (response.status === 401) {
+        redirectToLogin();
+        return waitForRedirect<string>();
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `Content failed (${response.status} ${response.statusText})`));
+    }
+
+    return response.text();
+}
+
+export function downloadTemplateFilePath(template: string, path: string, fileName: string): Promise<void> {
+    return downloadTemplateFile(
+        `/api/templates/${encodeURIComponent(template)}/download/` +
+        path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        fileName
+    );
+}
+
+export function saveTemplateFile(template: string, path: string, content: string): Promise<FileSystemResponse> {
+    return patchJson(
+        `/templates/${encodeURIComponent(template)}/` +
+        path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        {binary: false, content}
+    );
+}
+
+export function deleteTemplatePath(template: string, path: string): Promise<void> {
+    return deleteRequest(
+        `/templates/${encodeURIComponent(template)}/` +
+        path
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")
+    );
+}
+
+export function createTemplateFolder(template: string, folderPath: string, folderName: string): Promise<FileSystemResponse> {
+    return postJson(
+        `/templates/${encodeURIComponent(template)}/folders/` +
+        folderPath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        {path: folderName}
+    );
+}
+
+export function copyTemplatePath(template: string, sourcePath: string, destinationFolderPath: string): Promise<FileSystemResponse> {
+    return postJson(
+        `/templates/${encodeURIComponent(template)}/copy/` +
+        sourcePath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        {path: destinationFolderPath}
+    );
+}
+
+export function moveTemplatePath(template: string, sourcePath: string, destinationFolderPath: string): Promise<FileSystemResponse> {
+    return postJson(
+        `/templates/${encodeURIComponent(template)}/move/` +
+        sourcePath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        {path: destinationFolderPath}
+    );
+}
+
+export function renameTemplatePath(template: string, sourcePath: string, newName: string): Promise<FileSystemResponse> {
+    return postJson(
+        `/templates/${encodeURIComponent(template)}/rename/` +
+        sourcePath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/"),
+        {path: newName}
+    );
+}
+
+export function uploadTemplateFile(
+    template: string,
+    folderPath: string,
+    file: File,
+    relativePath: string
+): Promise<FileSystemResponse> {
+    const token = getAuthTokenOrRedirect<FileSystemResponse>();
+    if (typeof token !== "string") return token;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("relativePath", relativePath);
+
+    return fetch(`${API_BASE_URL}${appendSelectedNode(
+        `/templates/${encodeURIComponent(template)}/upload/` +
+        folderPath
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/")
+    )}`, {
+        method: "POST",
+        headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: form
+    }).then(async response => {
+        if (response.status === 401) {
+            redirectToLogin();
+            return waitForRedirect<FileSystemResponse>();
+        }
+        if (!response.ok) {
+            throw new Error(await getErrorMessage(response, `Upload failed (${response.status} ${response.statusText})`));
+        }
+        return response.json() as Promise<FileSystemResponse>;
+    });
+}
+
+export function getUsers(): Promise<User[]>{
+    return getJson("/users")
+}
+
+export function getUser(id: number): Promise<User> {
+    return getJson(`/users/${id}`);
+}
+
+export function createUser(email: string, roleId: number): Promise<User> {
+    return postJson("/users", {email: email.trim(), roleId});
+}
+
+export function updateUserRole(id: number, roleId: number): Promise<User> {
+    return patchJson(`/users/${id}`, {roleId});
+}
+
+export function getMe(): Promise<User> {
+    return getJson("/me");
+}
+
+export function getRoles(): Promise<Role[]> {
+    return getJson("/roles");
+}
+
+export function getRole(id: number): Promise<Role> {
+    return getJson(`/roles/${id}`);
+}
+
+export function createRole(name: string, permissions: number): Promise<Role> {
+    return postJson("/roles", {name: name.trim(), permissions});
+}
+
+export function updateRole(id: number, changes: {name?: string; permissions?: Record<string, boolean>}): Promise<Role> {
+    return patchJson(`/roles/${id}`, changes);
+}
+
+export function moveRole(roleId: number, afterRoleId: number): Promise<Role[]> {
+    return patchJson("/roles/order", {roleId, afterRoleId});
 }
 
 export function localizeMetricKeys<T extends ChartData>(points: T[], range: MetricRange): T[] {

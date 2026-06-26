@@ -1,14 +1,11 @@
 import type {JSX} from "react";
+import type {ReactNode} from "react";
 
 import styles from "./BurgerMenu.module.css"
-import type BurgerItem from "./BurgerItem.tsx";
-import type { BurgerItemProps } from "./BurgerItem.tsx";
 
 type  BurgerMenuProps = {
     is_open : boolean;
-    children:
-        | React.ReactElement<BurgerItemProps, typeof BurgerItem>
-        | React.ReactElement<BurgerItemProps, typeof BurgerItem>[];
+    children: ReactNode;
 }
 
 function BurgerMenu({ is_open, children } : BurgerMenuProps) : JSX.Element {

@@ -147,6 +147,10 @@ public class ProxyServerManager {
         send("POST", "/api/maintenance/off", "");
     }
 
+    public String maintenanceStatus() {
+        return get("/api/maintenance/status");
+    }
+
     public void addPlayer(String player) {
         send("POST", "/api/maintenance/?playerName=" + URLEncoder.encode(player, StandardCharsets.UTF_8), "");
     }

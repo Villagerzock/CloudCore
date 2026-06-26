@@ -9,7 +9,23 @@ import java.util.Map;
 @Component
 public class CloudCoreConfiguration {
 
-    public record ServerConfig(int maxAmountOfServers, int maxPlayers, int maxEloDiff, boolean canRejoin) {
+    public record ServerConfig(
+            String template,
+            int maxAmountOfServers,
+            int maxPlayersPerServer,
+            int playersPerTeam,
+            boolean canRejoin,
+            boolean splitSameQueue,
+            boolean singleQueueServerOnSplit,
+            int maxMmvDiff
+    ) {
+        public int maxPlayers() {
+            return maxPlayersPerServer;
+        }
+
+        public int maxEloDiff() {
+            return maxMmvDiff;
+        }
     }
 
     @Getter

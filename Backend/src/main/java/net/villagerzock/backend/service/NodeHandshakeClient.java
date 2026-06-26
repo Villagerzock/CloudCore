@@ -2,16 +2,26 @@ package net.villagerzock.backend.service;
 
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.CommandRequest;
+import net.villagerzock.backend.dto.AddMaintenancePlayerRequest;
+import net.villagerzock.backend.dto.CreateTemplateRequest;
+import net.villagerzock.backend.dto.FileSystemDelegatorResponse;
 import net.villagerzock.backend.dto.NetworkPointDto;
 import net.villagerzock.backend.dto.LaunchServerRequest;
 import net.villagerzock.backend.dto.LaunchServerResponse;
+import net.villagerzock.backend.dto.MatchmakingConfigurationDto;
+import net.villagerzock.backend.dto.MaintenanceStatusDto;
 import net.villagerzock.backend.dto.NodeMetadataDto;
+import net.villagerzock.backend.dto.SaveTemplateFileRequest;
 import net.villagerzock.backend.dto.ServerDto;
 import net.villagerzock.backend.dto.ServerTemplateDto;
+import net.villagerzock.backend.dto.TemplatePathRequest;
+import net.villagerzock.backend.dto.UploadTemplateFileRequest;
 import net.villagerzock.backend.repository.CloudCoreNodeRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -31,6 +41,8 @@ public class NodeHandshakeClient {
     private static final ParameterizedTypeReference<List<String>> STRING_LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<ChartPointDto>> CHART_LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<NetworkPointDto>> NETWORK_LIST = new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<MatchmakingConfigurationDto>> MATCHMAKING_LIST =
+            new ParameterizedTypeReference<>() {};
 
     private final CloudCoreNodeRepository nodes;
     private final RestClient.Builder restClientBuilder;
@@ -73,6 +85,228 @@ public class NodeHandshakeClient {
         return get(nodeId, "/templates", TEMPLATE_LIST);
     }
 
+    public ServerTemplateDto createTemplate(long nodeId, CreateTemplateRequest request) {
+        try {
+            return client(nodeId, Duration.ofMinutes(5)).post()
+                    .uri("/templates")
+                    .body(request)
+                    .retrieve()
+                    .body(ServerTemplateDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public List<MatchmakingConfigurationDto> getMatchmakingConfigurations(long nodeId) {
+        return get(nodeId, "/matchmaking", MATCHMAKING_LIST);
+    }
+
+    public MatchmakingConfigurationDto saveMatchmakingConfiguration(
+            long nodeId,
+            MatchmakingConfigurationDto configuration
+    ) {
+        try {
+            return client(nodeId).post()
+                    .uri("/matchmaking")
+                    .body(configuration)
+                    .retrieve()
+                    .body(MatchmakingConfigurationDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public void deleteMatchmakingConfiguration(long nodeId, String name) {
+        try {
+            client(nodeId).method(HttpMethod.DELETE)
+                    .uri("/matchmaking/{name}", name)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public MaintenanceStatusDto getMaintenanceStatus(long nodeId) {
+        return get(nodeId, "/maintenance", MaintenanceStatusDto.class);
+    }
+
+    public MaintenanceStatusDto setMaintenanceActive(long nodeId, boolean active) {
+        try {
+            return client(nodeId).post()
+                    .uri(active ? "/maintenance/on" : "/maintenance/off")
+                    .retrieve()
+                    .body(MaintenanceStatusDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public MaintenanceStatusDto addMaintenancePlayer(long nodeId, AddMaintenancePlayerRequest request) {
+        try {
+            return client(nodeId).post()
+                    .uri("/maintenance/players")
+                    .body(request)
+                    .retrieve()
+                    .body(MaintenanceStatusDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public MaintenanceStatusDto removeMaintenancePlayer(long nodeId, String uuid) {
+        try {
+            return client(nodeId).method(HttpMethod.DELETE)
+                    .uri("/maintenance/players/{uuid}", uuid)
+                    .retrieve()
+                    .body(MaintenanceStatusDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse getTemplateFileSystemPath(long nodeId, String template, String path) {
+        return get(
+                nodeId,
+                "/templates/" + encodePathSegment(template) + normalizeDelegatedPath(path),
+                FileSystemDelegatorResponse.class);
+    }
+
+    public ResponseEntity<byte[]> getTemplateFileContent(long nodeId, String template, String path) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).get()
+                    .uri("/templates/" + encodePathSegment(template) + "/content" + normalizeDelegatedPath(path))
+                    .retrieve()
+                    .toEntity(byte[].class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public ResponseEntity<byte[]> downloadTemplateFile(long nodeId, String template, String path) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).get()
+                    .uri("/templates/" + encodePathSegment(template) + "/download" + normalizeDelegatedPath(path))
+                    .retrieve()
+                    .toEntity(byte[].class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse saveTemplateFile(
+            long nodeId,
+            String template,
+            String path,
+            SaveTemplateFileRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).method(HttpMethod.PATCH)
+                    .uri("/templates/" + encodePathSegment(template) + normalizeDelegatedPath(path))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse uploadTemplateFile(
+            long nodeId,
+            String template,
+            String folderPath,
+            UploadTemplateFileRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/templates/" + encodePathSegment(template) + "/upload" + normalizeDelegatedPath(folderPath))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public void deleteTemplatePath(long nodeId, String template, String path) {
+        try {
+            client(nodeId, Duration.ofSeconds(40)).method(HttpMethod.DELETE)
+                    .uri("/templates/" + encodePathSegment(template) + normalizeDelegatedPath(path))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse createTemplateFolder(
+            long nodeId,
+            String template,
+            String folderPath,
+            TemplatePathRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/templates/" + encodePathSegment(template) + "/folders" + normalizeDelegatedPath(folderPath))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse copyTemplatePath(
+            long nodeId,
+            String template,
+            String sourcePath,
+            TemplatePathRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/templates/" + encodePathSegment(template) + "/copy" + normalizeDelegatedPath(sourcePath))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse moveTemplatePath(
+            long nodeId,
+            String template,
+            String sourcePath,
+            TemplatePathRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/templates/" + encodePathSegment(template) + "/move" + normalizeDelegatedPath(sourcePath))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public FileSystemDelegatorResponse renameTemplatePath(
+            long nodeId,
+            String template,
+            String sourcePath,
+            TemplatePathRequest request
+    ) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/templates/" + encodePathSegment(template) + "/rename" + normalizeDelegatedPath(sourcePath))
+                    .body(request)
+                    .retrieve()
+                    .body(FileSystemDelegatorResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
     public List<String> getProxyLogs(long nodeId) {
         return get(nodeId, "/proxy/logs", STRING_LIST);
     }
@@ -107,6 +341,11 @@ public class NodeHandshakeClient {
 
     public List<NetworkPointDto> getServerNetwork(long nodeId, String serverName) {
         return get(nodeId, "/servers/{serverName}/metrics/network", serverName, NETWORK_LIST);
+    }
+
+    public static boolean isNodeUnavailable(Throwable exception) {
+        return exception instanceof ResponseStatusException responseStatusException
+                && responseStatusException.getStatusCode().isSameCodeAs(HttpStatus.BAD_GATEWAY);
     }
 
     private <T> T get(long nodeId, String path, Class<T> responseType) {
@@ -202,6 +441,20 @@ public class NodeHandshakeClient {
 
     private RestClient client(long nodeId) {
         return client(nodeId, Duration.ofSeconds(5));
+    }
+
+    private String normalizeDelegatedPath(String path) {
+        if (path == null || path.isBlank()) {
+            return "/";
+        }
+        return path.startsWith("/") ? path : "/" + path;
+    }
+
+    private String encodePathSegment(String segment) {
+        return UriComponentsBuilder.newInstance()
+                .pathSegment(segment)
+                .build()
+                .toUriString();
     }
 
     private RestClient client(long nodeId, Duration readTimeout) {

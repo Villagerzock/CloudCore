@@ -52,36 +52,10 @@
     opacity: 0.75;
 }
 
-.form button {
-    appearance: none;
+.submitButton {
     height: 44px;
+    width: 100%;
     margin-top: 4px;
-    padding: 0 18px;
-    color: white;
-    background: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: 8px;
-    font: 600 0.9rem/1 var(--sans);
-    cursor: pointer;
-    transition: filter 150ms ease, transform 150ms ease, opacity 150ms ease;
-}
-
-.form button:hover {
-    filter: brightness(1.08);
-}
-
-.form button:active {
-    transform: translateY(1px);
-}
-
-.form button:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--accent-bg);
-}
-
-.form button:disabled {
-    cursor: wait;
-    opacity: 0.6;
 }
 
 @media (max-width: 520px) {

@@ -21,3 +21,13 @@
         background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 20%);
     }
 }
+
+.expanded {
+    border-color: color-mix(in srgb, var(--accent), white 10%);
+    background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 14%);
+}
+
+.readonly:hover {
+    cursor: default;
+    background-color: var(--accent-bg);
+}

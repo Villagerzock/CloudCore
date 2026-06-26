@@ -54,7 +54,6 @@
 
 .node:hover {
     background: color-mix(in srgb, var(--accent-bg), var(--accent-border) 25%);
-    transform: translateY(-1px);
 }
 
 .node:focus-visible {

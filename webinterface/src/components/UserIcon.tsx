@@ -3,9 +3,11 @@ import {FaUser} from "react-icons/fa";
 import {useEffect, useRef, useState} from "react";
 import Button from "./Button.tsx";
 import {logout} from "../lib/api.ts";
+import {useI18n} from "../lib/i18n.ts";
 
 
 function UserIcon(){
+    const {t} = useI18n();
     const [open, setOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -38,10 +40,10 @@ function UserIcon(){
                 {open && (
                     <div className={styles.popup}>
                         <Button type={"clear"} onClick={()=>{}}>
-                            My Account
+                            {t("account.my_account")}
                         </Button>
                         <hr/>
-                        <Button type={"clear"} onClick={handleLogout}>Logout</Button>
+                        <Button type={"clear"} onClick={handleLogout}>{t("account.logout")}</Button>
                     </div>
                 )}
                 <div className={styles.circle} onClick={()=> setOpen(!open)}>

@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -101,5 +102,16 @@ public class AuthService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
+    }
+
+    public boolean checkPassword(String username, String password) {
+        return users.findByUsernameIgnoreCase(username.trim())
+                .filter(UserAccount::isEnabled)
+                .filter(account -> passwordEncoder.matches(password, account.getPasswordHash()))
+                .isPresent();
+    }
+
+    public Optional<UserAccount> findByUsername(String username){
+        return users.findByUsernameIgnoreCase(username.trim());
     }
 }

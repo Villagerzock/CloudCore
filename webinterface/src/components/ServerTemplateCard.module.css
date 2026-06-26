@@ -4,6 +4,20 @@
     background-color: var(--accent-bg);
     border: 1px solid var(--accent-border);
     border-radius: 8px;
+
+    &:hover {
+        background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 20%);
+        cursor: pointer;
+    }
+}
+
+.disabled {
+    opacity: 0.58;
+}
+
+.disabled:hover {
+    cursor: not-allowed;
+    background-color: var(--accent-bg);
 }
 
 .buttonList {

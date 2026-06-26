@@ -1,12 +1,32 @@
 services:
+  mariadb:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: cloudcore_backend
+      MARIADB_USER: "${DB_USERNAME:?Set DB_USERNAME in Backend/.env}"
+      MARIADB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in Backend/.env}"
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in Backend/.env}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    depends_on:
+      mariadb:
+        condition: service_healthy
     extra_hosts:
-      - "mariadb:host-gateway"
       - "host.docker.internal:host-gateway"
     environment:
       DB_HOST: mariadb
@@ -18,3 +38,6 @@ services:
       LINK_CODE_SECRET: "${LINK_CODE_SECRET:?Set LINK_CODE_SECRET in Backend/.env}"
       CORE_HANDSHAKE_LOOPBACK_HOST: "host.docker.internal"
     restart: unless-stopped
+
+volumes:
+  mariadb_data:

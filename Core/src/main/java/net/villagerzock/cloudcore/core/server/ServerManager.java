@@ -189,7 +189,7 @@ try = [
         scanForRunningProxy(true);
         scanForRunningServers();
         Config.LobbyConfig lobbyConfig = Config.getInstance().getLobby();
-        if (!Files.exists(BASE_DIR.resolve("templates").resolve(lobbyConfig.server))){
+        if (lobbyConfig.server == null || !Files.exists(BASE_DIR.resolve("templates").resolve(lobbyConfig.server))){
             String server = launchCreationWizard(lobbyConfig.server);
             if (lobbyConfig.server == null){
                 lobbyConfig.server = server;
@@ -233,9 +233,25 @@ try = [
 
         ProxyServerManager.getInstance().configure(new ConfigDto(
                 lobbyConfig.getServer(),
-                null,
+                matchmakingConfigurations(),
                 Config.getInstance().getProxy().getMaintenanceMotd()
         ));
+    }
+
+    private static Map<String, ConfigDto.MatchmakingServerConfigDto> matchmakingConfigurations() {
+        Map<String, ConfigDto.MatchmakingServerConfigDto> result = new LinkedHashMap<>();
+        Config.getInstance().getMatchmaking().forEach((name, configuration) -> result.put(
+                name,
+                new ConfigDto.MatchmakingServerConfigDto(
+                        configuration.getTemplate(),
+                        configuration.getMaxAmountOfServers(),
+                        configuration.getMaxPlayersPerServer(),
+                        configuration.getPlayersPerTeam(),
+                        configuration.isCanRejoin(),
+                        configuration.isSplitSameQueue(),
+                        configuration.isSingleQueueServerOnSplit(),
+                        configuration.getMaxMmvDiff())));
+        return result;
     }
 
     private static void ensureDockerNetwork() {
@@ -431,13 +447,17 @@ try = [
                 "VELOCITY_VERSION=" + velocityVersion,
                 "-e",
                 "ENABLE_RCON=false",
+                "-e",
+                "SPRING_OUTPUT_ANSI_ENABLED=always",
+                "-e",
+                "LOGGING_PATTERN_CONSOLE=[%clr(%d{HH:mm:ss}){faint} %clr(%-5level)] [%clr(%logger){cyan}]: %msg%n",
 
                 "-e",
                 "CLOUDCORE_DB_HOST=mariadb",
                 "-e",
                 "CLOUDCORE_DB_PORT=" + Config.getInstance().getMariadb().getPort(),
                 "-e",
-                "CLOUDCORE_DB_NAME=cloudcore",
+                "CLOUDCORE_DB_NAME=" + Config.getInstance().getMariadb().getDatabase(),
                 "-e",
                 "CLOUDCORE_DB_USER=" + Config.getInstance().getMariadb().getUser(),
                 "-e",
@@ -710,59 +730,14 @@ try = [
                 config.type.setupForVelocity(serverDir,secret);
 
                 String containerName = sanitizeDockerName(instanceName);
-                RunningServer runningServer = null;
-
-                for (int attempt = 1; attempt <= 2; attempt++) {
-                    runningServer = startDockerServer(name, singleton, instanceName, serverDir, containerName, config);
-
-                    try {
-                        waitForServerReady(runningServer);
-                        ProxyServerManager.getInstance().register(
-                                runningServer.name(),
-                                runningServer.templateName(),
-                                runningServer.containerName(),
-                                25565
-                        );
-                        runningServer.future().complete(runningServer);
-
-                        return new ServerLaunchResult(
-                                ServerState.RUNNING,
-                                "Started Successfully on port " + runningServer.port(),
-                                runningServer,
-                                runningServer.future()
-                        );
-                    } catch (IllegalStateException e) {
-                        String logs = dockerLogs(runningServer.containerId(), 200);
-
-                        if (attempt == 1 && isMojangHashFailure(e, logs)) {
-                            System.out.println("Detected corrupt Mojang download cache. Cleaning cache and retrying...");
-                            removeContainer(runningServer.containerName());
-                            RUNNING_SERVERS.remove(runningServer.name());
-                            deleteMojangDownloadCache(serverDir);
-                            if (!singleton) {
-                                deleteMojangDownloadCache(TEMPLATES_DIR.resolve(name));
-                                Main.deleteRecursive(serverDir);
-                                serverDir = createInstance(name, instanceName);
-                            }
-                            continue;
-                        }
-
-                        runningServer.future().completeExceptionally(e);
-
-                        return new ServerLaunchResult(
-                                ServerState.CRASHED,
-                                "Crashed: " + e.getMessage(),
-                                runningServer,
-                                runningServer.future()
-                        );
-                    }
-                }
+                RunningServer runningServer = startDockerServer(name, singleton, instanceName, serverDir, containerName, config);
+                watchServerStartup(name, singleton, instanceName, serverDir, containerName, config, runningServer, 1);
 
                 return new ServerLaunchResult(
-                        ServerState.FAILED,
-                        "Failed to start server",
+                        ServerState.STARTING,
+                        "Container started on port " + runningServer.port(),
                         runningServer,
-                        CompletableFuture.failedFuture(new IllegalStateException("Failed to start server"))
+                        runningServer.future()
                 );
             } catch (Exception e) {
                 return new ServerLaunchResult(
@@ -773,6 +748,90 @@ try = [
                 );
             }
         });
+    }
+
+    private static void watchServerStartup(
+            String templateName,
+            boolean singleton,
+            String instanceName,
+            Path serverDir,
+            String containerName,
+            ServerConfig config,
+            RunningServer runningServer,
+            int attempt
+    ) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                waitForServerReady(runningServer);
+                ProxyServerManager.getInstance().register(
+                        runningServer.name(),
+                        runningServer.templateName(),
+                        runningServer.containerName(),
+                        25565
+                );
+                runningServer.future().complete(runningServer);
+            } catch (IllegalStateException exception) {
+                String logs = dockerLogs(runningServer.containerId(), 200);
+
+                if (attempt == 1 && isMojangHashFailure(exception, logs)) {
+                    retryAfterMojangCacheFailure(
+                            templateName,
+                            singleton,
+                            instanceName,
+                            serverDir,
+                            containerName,
+                            config,
+                            runningServer);
+                    return;
+                }
+
+                runningServer.future().completeExceptionally(exception);
+            } catch (Exception exception) {
+                runningServer.future().completeExceptionally(exception);
+            }
+        });
+    }
+
+    private static void retryAfterMojangCacheFailure(
+            String templateName,
+            boolean singleton,
+            String instanceName,
+            Path serverDir,
+            String containerName,
+            ServerConfig config,
+            RunningServer failedServer
+    ) {
+        try {
+            System.out.println("Detected corrupt Mojang download cache. Cleaning cache and retrying...");
+            removeContainer(failedServer.containerName());
+            RUNNING_SERVERS.remove(failedServer.name());
+            deleteMojangDownloadCache(serverDir);
+
+            Path retryServerDir = serverDir;
+            if (!singleton) {
+                deleteMojangDownloadCache(TEMPLATES_DIR.resolve(templateName));
+                Main.deleteRecursive(serverDir);
+                retryServerDir = createInstance(templateName, instanceName);
+            }
+
+            RunningServer retryServer = startDockerServer(
+                    templateName,
+                    singleton,
+                    instanceName,
+                    retryServerDir,
+                    containerName,
+                    config);
+            retryServer.future().whenComplete((server, throwable) -> {
+                if (throwable == null) {
+                    failedServer.future().complete(server);
+                } else {
+                    failedServer.future().completeExceptionally(throwable);
+                }
+            });
+            watchServerStartup(templateName, singleton, instanceName, retryServerDir, containerName, config, retryServer, 2);
+        } catch (Exception retryException) {
+            failedServer.future().completeExceptionally(retryException);
+        }
     }
 
     private static RunningServer startDockerServer(
@@ -1465,15 +1524,26 @@ try = [
                 seed = String.valueOf(new Random().nextLong());
             }
 
-            String version = ConsolePrompts.select(
-                    "Create Server",
-                    "What version do you Want?",
-                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType)
-                            .keySet()
-                            .stream()
-                            .map(value -> new ConsolePrompts.Option(value, value))
-                            .toList()
-            );
+            Map<String, String> versions = SERVER_TO_VERSION_TO_URL_MAP.get(serverType);
+            String defaultVersion = versions.keySet().stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No versions loaded for " + serverType));
+            String version;
+            while (true) {
+                version = ConsolePrompts.input(
+                        "Create Server",
+                        "What version do you want?",
+                        defaultVersion,
+                        false
+                ).trim();
+
+                if (versions.containsKey(version)) {
+                    break;
+                }
+
+                System.out.println("Unknown version: " + version);
+                System.out.println("Examples: " + versions.keySet().stream().limit(8).toList());
+            }
             boolean eula = ConsolePrompts.confirm(
                     "Create Server",
                     "Do you accept the Mojang EULA? (https://www.minecraft.net/en-us/eula)"
@@ -1486,7 +1556,7 @@ try = [
 
             return createServer(
                     ServerType.valueOf(serverType.toUpperCase(Locale.ROOT)),
-                    SERVER_TO_VERSION_TO_URL_MAP.get(serverType).get(version),
+                    versions.get(version),
                     version,
                     name,
                     memory,

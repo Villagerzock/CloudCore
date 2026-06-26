@@ -2,8 +2,6 @@ package net.villagerzock.backend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,10 +30,6 @@ public class UserAccount {
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserRole role = UserRole.USER;
 
     @Column(nullable = false)
     private boolean enabled = true;
@@ -93,14 +87,6 @@ public class UserAccount {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
-    }
-
-    public UserRole getRole() {
-        return role;
-    }
-
-    public void setRole(UserRole role) {
-        this.role = role;
     }
 
     public boolean isEnabled() {

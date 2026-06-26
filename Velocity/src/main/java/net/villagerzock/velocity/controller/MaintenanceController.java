@@ -3,6 +3,7 @@ package net.villagerzock.velocity.controller;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.villagerzock.velocity.entities.MaintenancePlayer;
+import net.villagerzock.velocity.dto.MaintenanceStatusDto;
 import net.villagerzock.velocity.repositories.MaintenancePlayerRepo;
 import net.villagerzock.velocity.service.MaintenanceService;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,17 @@ public class MaintenanceController {
         this.maintenanceService = maintenanceService;
     }
 
+    @GetMapping("/status")
+    public MaintenanceStatusDto getStatus() {
+        return new MaintenanceStatusDto(
+                maintenanceService.isActive(),
+                maintenancePlayerRepo.findAll().stream()
+                        .map(player -> new MaintenanceStatusDto.PlayerEntry(
+                                player.getUuid(),
+                                proxyServer.getPlayer(player.getUuid()).map(Player::getUsername).orElse(null)))
+                        .toList());
+    }
+
     @PostMapping("/on")
     public ResponseEntity<String> turnMaintenanceOn() {
         maintenanceService.turnOn();
@@ -44,8 +56,12 @@ public class MaintenanceController {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<Player> playerOpt = playerUUID == null ? proxyServer.getPlayer(playerName) : proxyServer.getPlayer(playerUUID);
+        if (playerUUID != null) {
+            maintenanceService.addPlayer(playerUUID);
+            return ResponseEntity.ok("add " + playerUUID);
+        }
 
+        Optional<Player> playerOpt = proxyServer.getPlayer(playerName);
         if (playerOpt.isEmpty()) return ResponseEntity.notFound().build();
 
         maintenanceService.addPlayer(playerOpt.get());
@@ -59,12 +75,14 @@ public class MaintenanceController {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<Player> playerOpt = playerUUID == null ? proxyServer.getPlayer(playerName) : proxyServer.getPlayer(playerUUID);
+        if (playerUUID != null) {
+            maintenanceService.removePlayer(playerUUID);
+            return ResponseEntity.ok("remove " + playerUUID);
+        }
 
+        Optional<Player> playerOpt = proxyServer.getPlayer(playerName);
         if (playerOpt.isEmpty()) return ResponseEntity.notFound().build();
-
         maintenanceService.removePlayer(playerOpt.get());
-
         return ResponseEntity.ok("remove " + playerOpt.get().getUsername());
     }
 }

@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/cloudcore-servers/link").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/core/logs").permitAll()
@@ -50,8 +51,8 @@ public class SecurityConfig {
         return username -> users.findByUsernameIgnoreCase(username)
                 .map(account -> User.withUsername(account.getUsername())
                         .password(account.getPasswordHash())
-                        .roles(account.getRole().name())
                         .disabled(!account.isEnabled())
+                        .authorities("USER")
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }

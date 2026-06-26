@@ -1,0 +1,37 @@
+.groups {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.group {
+    margin: 0;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 86%);
+}
+
+.group legend {
+    padding: 0 6px;
+    font-weight: 800;
+}
+
+.permissionList {
+    display: grid;
+    gap: 8px;
+}
+
+.permissionRow {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+
+.permissionRow input {
+    width: 18px;
+    height: 18px;
+}

@@ -32,6 +32,8 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation("org.apache.sshd:sshd-core:2.17.1")
+    implementation("org.apache.sshd:sshd-sftp:2.17.1")
 }
 
 tasks.withType<Test> {

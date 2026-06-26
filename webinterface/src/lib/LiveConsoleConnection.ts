@@ -300,7 +300,9 @@ class DummyLiveConsoleConnection extends LiveConsoleConnection {
 export function connectLiveConsole(url: string, consoleName: string): LiveConsoleConnection {
     const websocketUrl = new URL(url, window.location.href);
     const node = new URLSearchParams(window.location.search).get("node");
+    const token = localStorage.getItem("auth_token");
     if (node !== null) websocketUrl.searchParams.set("node", node);
+    if (token !== null) websocketUrl.searchParams.set("token", token);
     websocketUrl.searchParams.set("console", consoleName);
     return new WebSocketLiveConsoleConnection(websocketUrl.toString());
 }

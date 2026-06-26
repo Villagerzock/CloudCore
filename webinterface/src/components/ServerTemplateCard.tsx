@@ -1,37 +1,48 @@
-import {launchServer, type ServerTemplate} from "../lib/api.ts";
+import {launchServer, type ServerTemplate, usePersistentNavigate} from "../lib/api.ts";
 import styles from "./ServerTemplateCard.module.css";
 import ImageButton from "./ImageButton.tsx";
 import {FaCirclePlay, FaRegCirclePlay} from "react-icons/fa6";
-import {useLocation, useNavigate} from "react-router";
+import {useI18n} from "../lib/i18n.ts";
 
-function ServerTemplateCard({ name, server_software, version }: ServerTemplate){
-    const navigate = useNavigate();
-    const location = useLocation();
+type ServerTemplateCardProps = ServerTemplate & {
+    canOpen: boolean;
+    canLaunch: boolean;
+}
+
+function ServerTemplateCard({ name, server_software, version, canOpen, canLaunch }: ServerTemplateCardProps){
+    const navigate = usePersistentNavigate();
+    const {t} = useI18n();
 
     function openServer(serverName: string) {
-        navigate({
-            pathname: `/server/${encodeURIComponent(serverName)}`,
-            search: location.search
-        });
+        navigate(`/server/${encodeURIComponent(serverName)}`);
     }
 
-    async function startSingleton(){
+    async function startSingleton(e : React.MouseEvent<HTMLButtonElement>){
+        e.stopPropagation();
         const serverName : string = await launchServer(name, true);
         openServer(serverName);
     }
-    async function startInstance() {
+    async function startInstance(e : React.MouseEvent<HTMLButtonElement>) {
+        e.stopPropagation();
         const serverName : string = await launchServer(name, false);
         openServer(serverName);
     }
+
+    function open(){
+        if (!canOpen) return;
+        navigate(`/templates/${encodeURIComponent(name)}`)
+    }
     return (
-        <div className={styles.card}>
+        <div className={`${styles.card} ${!canOpen ? styles.disabled : ""}`} onClick={open}>
             <h3>{name}</h3>
-            <span>Software: {server_software}</span><br/>
-            <span>Version: {version}</span><br/>
-            <div className={styles.buttonList}>
-                <ImageButton onClick={startSingleton} tooltip={"Launch Singleton"}><FaRegCirclePlay/></ImageButton>
-                <ImageButton onClick={startInstance} tooltip={"Launch Instance"}><FaCirclePlay/></ImageButton>
-            </div>
+            <span>{t("field.software")}: {server_software}</span><br/>
+            <span>{t("field.version")}: {version}</span><br/>
+            {canLaunch && (
+                <div className={styles.buttonList}>
+                    <ImageButton onClick={startSingleton} tooltip={t("action.launch_singleton")}><FaRegCirclePlay/></ImageButton>
+                    <ImageButton onClick={startInstance} tooltip={t("action.launch_instance")}><FaCirclePlay/></ImageButton>
+                </div>
+            )}
         </div>
     );
 }

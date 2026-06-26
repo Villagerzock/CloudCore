@@ -1,6 +1,11 @@
 package net.villagerzock.backend.websocket;
 
+import net.villagerzock.backend.repository.AuthTokenRepository;
+import net.villagerzock.backend.security.NodePermission;
 import net.villagerzock.backend.service.ConsoleService;
+import net.villagerzock.backend.service.AuthService;
+import net.villagerzock.backend.service.NodeHandshakeClient;
+import net.villagerzock.backend.service.NodePermissionService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -11,6 +16,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Set;
 import java.util.List;
 import java.util.Map;
@@ -21,27 +27,37 @@ import tools.jackson.databind.ObjectMapper;
 public class ConsoleWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final ConsoleService consoleService;
+    private final NodePermissionService permissions;
+    private final AuthTokenRepository tokens;
     private final Set<String> initializedConsoles = ConcurrentHashMap.newKeySet();
     private final Map<Subscription, Set<WebSocketSession>> subscriptions = new ConcurrentHashMap<>();
     private final Map<String, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
 
-    public ConsoleWebSocketHandler(ObjectMapper objectMapper, ConsoleService consoleService) {
+    public ConsoleWebSocketHandler(
+            ObjectMapper objectMapper,
+            ConsoleService consoleService,
+            NodePermissionService permissions,
+            AuthTokenRepository tokens
+    ) {
         this.objectMapper = objectMapper;
         this.consoleService = consoleService;
+        this.permissions = permissions;
+        this.tokens = tokens;
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
         Long nodeId = getNodeId(session.getUri());
         String console = getQueryParameter(session.getUri(), "console");
-        if (nodeId == null || console == null || console.isBlank()) {
+        String username = authenticate(session.getUri());
+        if (nodeId == null || console == null || console.isBlank() || username == null) {
             send(session, new ConsoleMessage("system", java.util.List.of(
-                    "WebSocket query parameters 'node' and 'console' are required")));
+                    "WebSocket query parameters 'node', 'console' and 'token' are required")));
             return;
         }
 
         register(session, nodeId, console);
-        sendInitialLogs(session, nodeId, console);
+        sendInitialLogs(session, username, nodeId, console);
     }
 
     @Override
@@ -60,9 +76,14 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
         }
 
         Long nodeId = getNodeId(session.getUri());
+        String username = authenticate(session.getUri());
         if (nodeId == null) {
             send(session, new ConsoleMessage("system", java.util.List.of(
                     "WebSocket query parameter 'node' is required")));
+            return;
+        }
+        if (username == null) {
+            send(session, new ConsoleMessage("system", java.util.List.of("Authentication required")));
             return;
         }
 
@@ -70,7 +91,7 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
 
         String consoleKey = session.getId() + ':' + request.console();
         if (initializedConsoles.add(consoleKey)) {
-            sendInitialLogs(session, nodeId, request.console());
+            sendInitialLogs(session, username, nodeId, request.console());
         }
         if (Boolean.TRUE.equals(request.subscribe())) {
             return;
@@ -80,9 +101,11 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         try {
+            permissions.require(username, nodeId, statusPermission(request.console()));
             consoleService.execute(nodeId, request.console(), request.command().trim());
         } catch (RuntimeException exception) {
-            send(session, new ConsoleMessage("system", java.util.List.of(exception.getMessage())));
+            String console = NodeHandshakeClient.isNodeUnavailable(exception) ? request.console() : "system";
+            send(session, new ConsoleMessage(console, java.util.List.of(messageFor(exception))));
         }
     }
 
@@ -178,14 +201,23 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    private void sendInitialLogs(WebSocketSession session, long nodeId, String console) throws IOException {
+    private void sendInitialLogs(WebSocketSession session, String username, long nodeId, String console) throws IOException {
         String consoleKey = session.getId() + ':' + console;
         initializedConsoles.add(consoleKey);
         try {
+            permissions.require(username, nodeId, readPermission(console));
             send(session, new ConsoleMessage(console, consoleService.getLogs(nodeId, console)));
         } catch (RuntimeException exception) {
-            send(session, new ConsoleMessage("system", java.util.List.of(exception.getMessage())));
+            String responseConsole = NodeHandshakeClient.isNodeUnavailable(exception) ? console : "system";
+            send(session, new ConsoleMessage(responseConsole, java.util.List.of(messageFor(exception))));
         }
+    }
+
+    private String messageFor(RuntimeException exception) {
+        if (NodeHandshakeClient.isNodeUnavailable(exception)) {
+            return "Cannot connect to Node";
+        }
+        return exception.getMessage();
     }
 
     private void register(WebSocketSession session, long nodeId, String console) {
@@ -212,5 +244,27 @@ public class ConsoleWebSocketHandler extends TextWebSocketHandler {
     }
 
     private record Subscription(long nodeId, String console) {
+    }
+
+    private String authenticate(URI uri) {
+        String rawToken = getQueryParameter(uri, "token");
+        if (rawToken == null || rawToken.isBlank()) {
+            return null;
+        }
+        return tokens.findActiveByHash(AuthService.hashToken(rawToken), Instant.now())
+                .map(token -> token.getUser().getUsername())
+                .orElse(null);
+    }
+
+    private NodePermission readPermission(String console) {
+        return "proxy".equalsIgnoreCase(console)
+                ? NodePermission.PROXY_PAGE
+                : NodePermission.SERVER_CONSOLE;
+    }
+
+    private NodePermission statusPermission(String console) {
+        return "proxy".equalsIgnoreCase(console)
+                ? NodePermission.PROXY_STATUS
+                : NodePermission.SERVER_STATUS;
     }
 }

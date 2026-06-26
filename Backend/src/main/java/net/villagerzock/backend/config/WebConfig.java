@@ -8,9 +8,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
     private final NodeSelectionInterceptor nodeSelectionInterceptor;
+    private final CorsProperties corsProperties;
 
-    public WebConfig(NodeSelectionInterceptor nodeSelectionInterceptor) {
+    public WebConfig(NodeSelectionInterceptor nodeSelectionInterceptor, CorsProperties corsProperties) {
         this.nodeSelectionInterceptor = nodeSelectionInterceptor;
+        this.corsProperties = corsProperties;
     }
 
     @Override
@@ -20,6 +22,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/servers/**",
                         "/api/templates/**",
                         "/api/proxy/**",
+                        "/api/me",
+                        "/api/users/**",
+                        "/api/roles/**",
+                        "/api/matchmaking/**",
+                        "/api/maintenance/**",
                         "/api/metadata/**",
                         "/api/console/**");
     }
@@ -27,8 +34,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")
-                .allowedMethods("GET", "POST")
-                .allowedHeaders("Content-Type", "Authorization", "X-CloudCore-Server-Id");
+                .allowedOriginPatterns(corsProperties.allowedOriginPatterns())
+                .allowedMethods("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("Content-Disposition")
+                .maxAge(3600);
     }
 }

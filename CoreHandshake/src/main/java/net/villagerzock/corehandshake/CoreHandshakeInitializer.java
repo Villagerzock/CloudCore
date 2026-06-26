@@ -18,21 +18,39 @@ public final class CoreHandshakeInitializer {
 
     private static ConfigurableApplicationContext runningSpring = null;
 
-    public static void start(CoreHandshakeProvider provider) {
+    public static synchronized void start(CoreHandshakeProvider provider) {
         CoreHandshakeProvider requiredProvider = Objects.requireNonNull(provider, "provider");
         SpringApplication application = new SpringApplication(BootstrapConfiguration.class);
         application.setWebApplicationType(WebApplicationType.SERVLET);
         application.setApplicationContextFactory(ApplicationContextFactory.ofContextClass(
                 AnnotationConfigServletWebServerApplicationContext.class));
-        application.setDefaultProperties(Map.of("spring.output.ansi.enabled", "never"));
+        application.setDefaultProperties(Map.of(
+                "spring.output.ansi.enabled", "never",
+                "spring.main.register-shutdown-hook", "false"
+        ));
         application.addInitializers(context -> context.getBeanFactory()
                 .registerSingleton("coreHandshakeProvider", requiredProvider));
         runningSpring = application.run();
     }
 
-    public static void stop() {
-        if (runningSpring != null){
-            runningSpring.stop();
+    public static synchronized void stop() {
+        ConfigurableApplicationContext context = runningSpring;
+        runningSpring = null;
+        if (context == null) {
+            return;
+        }
+
+        Thread closer = Thread.ofPlatform()
+                .name("core-handshake-spring-close")
+                .daemon(true)
+                .start(context::close);
+        try {
+            closer.join(10_000);
+            if (closer.isAlive()) {
+                System.err.println("Timed out while closing CoreHandshake Spring context.");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
         }
     }
 

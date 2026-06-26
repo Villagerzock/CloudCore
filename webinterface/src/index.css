@@ -29,6 +29,8 @@
     font-size: 16px;
   }
 
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -54,16 +56,21 @@
 
 #root {
   max-width: 100%;
-  height: 100svh;
+  height: 100dvh;
+  max-height: 100dvh;
   text-align: center;
   border-inline: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .background {

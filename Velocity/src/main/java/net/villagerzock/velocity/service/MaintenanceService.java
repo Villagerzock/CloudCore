@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class MaintenanceService {
@@ -55,14 +56,22 @@ public class MaintenanceService {
     }
 
     public void addPlayer(Player player){
+        addPlayer(player.getUniqueId());
+    }
+
+    public void addPlayer(UUID uuid){
         MaintenancePlayer maintenancePlayer = new MaintenancePlayer();
-        maintenancePlayer.setUuid(player.getUniqueId());
+        maintenancePlayer.setUuid(uuid);
         maintenancePlayer.setAddedOn(Instant.now());
 
         maintenancePlayerRepo.save(maintenancePlayer);
     }
     public void removePlayer(Player player){
-        maintenancePlayerRepo.deleteById(player.getUniqueId());
+        removePlayer(player.getUniqueId());
+    }
+
+    public void removePlayer(UUID uuid){
+        maintenancePlayerRepo.deleteById(uuid);
     }
 
     public boolean hasPlayer(Player player){

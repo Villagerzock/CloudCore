@@ -1,0 +1,85 @@
+.fileDisplay {
+    height: 100%;
+    min-height: 0;
+    padding: 18px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editorShell,
+.binaryShell {
+    min-height: 0;
+    flex: 1;
+    border: 1px solid color-mix(in srgb, var(--accent), transparent 54%);
+    border-radius: 8px;
+    background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent), transparent 90%), transparent 44px),
+            color-mix(in srgb, var(--code-bg), black 10%);
+    box-shadow: 0 16px 38px rgb(0 0 0 / 24%);
+    overflow: hidden;
+}
+
+.editorInner {
+    height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.binaryShell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.binaryPanel {
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.binaryPanel h2 {
+    margin: 0;
+}
+
+.binaryPanel p {
+    opacity: 0.78;
+}
+
+.error {
+    color: #ffb4b4;
+    opacity: 1;
+}
+
+.previewImage {
+    max-width: 100%;
+    max-height: min(58vh, 520px);
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+    object-fit: contain;
+    background: color-mix(in srgb, black, transparent 80%);
+}
+
+.previewFrame,
+.previewVideo {
+    width: min(100%, 780px);
+    height: min(62vh, 560px);
+    border: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 80%);
+}
+
+.previewAudio {
+    width: min(100%, 520px);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

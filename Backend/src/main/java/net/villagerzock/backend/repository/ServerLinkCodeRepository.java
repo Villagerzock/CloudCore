@@ -10,14 +10,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 public interface ServerLinkCodeRepository extends JpaRepository<ServerLinkCode, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select code from ServerLinkCode code
-            join fetch code.server server
-            join fetch server.user
+            join fetch code.node node
             where code.codeHash = :codeHash
               and code.consumedAt is null
               and code.expiresAt > :now
@@ -32,11 +30,11 @@ public interface ServerLinkCodeRepository extends JpaRepository<ServerLinkCode, 
     @Query("""
             update ServerLinkCode code
             set code.consumedAt = :now
-            where code.server.id = :serverId
+            where code.node.id = :nodeId
               and code.consumedAt is null
               and code.expiresAt > :now
             """)
-    int consumeActiveCodesForServer(@Param("serverId") UUID serverId, @Param("now") Instant now);
+    int consumeActiveCodesForNode(@Param("nodeId") long nodeId, @Param("now") Instant now);
 
     long deleteByExpiresAtBefore(Instant cutoff);
 }

@@ -1,8 +1,8 @@
 package net.villagerzock.backend;
 
-import net.villagerzock.backend.entity.CloudCoreServer;
+import net.villagerzock.backend.entity.CloudCoreNode;
 import net.villagerzock.backend.entity.UserAccount;
-import net.villagerzock.backend.repository.CloudCoreServerRepository;
+import net.villagerzock.backend.repository.CloudCoreNodeRepository;
 import net.villagerzock.backend.repository.UserAccountRepository;
 import net.villagerzock.backend.service.NodeHandshakeClient;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ class CloudCoreServerLinkFlowTests {
     private UserAccountRepository users;
 
     @Autowired
-    private CloudCoreServerRepository servers;
+    private CloudCoreNodeRepository nodes;
 
     @Test
     void userRegistersServerAndMatchingIpLinksItWithOneTimeCode() throws Exception {
@@ -164,9 +164,8 @@ class CloudCoreServerLinkFlowTests {
                         .with(httpBasic("other-user", "other-password")))
                 .andExpect(status().isForbidden());
 
-        CloudCoreServer server = servers.findById(serverId).orElseThrow();
-        assertThat(server.isLinked()).isTrue();
-        assertThat(server.getUser().getUsername()).isEqualTo("link-test-user");
+        CloudCoreNode node = nodes.findByPublicId(serverId).orElseThrow();
+        assertThat(node.isLinked()).isTrue();
 
         mockMvc.perform(post("/api/cloudcore-servers/{serverId}/link-code", serverId)
                         .with(httpBasic("link-test-user", "test-password")))

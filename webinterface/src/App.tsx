@@ -9,11 +9,15 @@ import {FaChartDiagram, FaGamepad, FaPersonDigging, FaUserGroup} from "react-ico
 import {Navigate, NavLink, Outlet, useRouteError, useSearchParams} from "react-router";
 import ErrorRoute from "./routes/ErrorRoute.tsx";
 import ImageButton from "./components/ImageButton.tsx";
+import {useNodePermissions} from "./hooks/useNodePermissions.ts";
+import {useI18n} from "./lib/i18n.ts";
 
 function App() {
   const [ is_open, set_is_open ] = useState<boolean>(false);
   const [searchParams] = useSearchParams();
   const error = useRouteError();
+  const permissions = useNodePermissions();
+  const {t} = useI18n();
   const rawNodeId = searchParams.get("node");
   const nodeId = rawNodeId === null ? NaN : Number(rawNodeId);
 
@@ -29,42 +33,56 @@ function App() {
     <>
       <Header>
         <ImageButton onClick={toggleBurgerMenu}><FaBars size={"2em"}/></ImageButton>
-        <NavLink to={"/nodes"}>Nodes</NavLink>
+        <NavLink to={"/nodes"}>{t("page.nodes")}</NavLink>
       </Header>
       <div className={`${styles.content} background`}>
         <BurgerMenu is_open={is_open}>
             <BurgerItem route={"/"}>
                 <FaChartArea/>
-                <p>Dashboard</p>
+                <p>{t("page.dashboard")}</p>
             </BurgerItem>
-            <BurgerItem route={"/proxy"}>
-                <FaChartDiagram/>
-                <p>Proxy</p>
-            </BurgerItem>
-            <BurgerItem route={"/servers"}>
-                <FaServer/>
-                <p>Servers</p>
-            </BurgerItem>
-            <BurgerItem route={"/templates"}>
-                <FaLayerGroup/>
-                <p>Templates</p>
-            </BurgerItem>
-            <BurgerItem route={"/users"}>
-                <FaUserGroup/>
-                <p>Users</p>
-            </BurgerItem>
-            <BurgerItem route={"/matchmaking"}>
-                <FaGamepad/>
-                <p>Matchmaking</p>
-            </BurgerItem>
-            <BurgerItem route={"/maintenance"}>
-                <FaPersonDigging/>
-                <p>Maintenance</p>
-            </BurgerItem>
-            <BurgerItem route={"/bans"}>
-                <FaGavel/>
-                <p>Banned Players</p>
-            </BurgerItem>
+            {permissions.has("PROXY_PAGE") && (
+                <BurgerItem route={"/proxy"}>
+                    <FaChartDiagram/>
+                    <p>{t("page.proxy")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("SERVERS_PAGE") && (
+                <BurgerItem route={"/servers"}>
+                    <FaServer/>
+                    <p>{t("page.servers")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("TEMPLATES_PAGE") && (
+                <BurgerItem route={"/templates"}>
+                    <FaLayerGroup/>
+                    <p>{t("page.templates")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("USERS_PAGE") && (
+                <BurgerItem route={"/users"}>
+                    <FaUserGroup/>
+                    <p>{t("page.users")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("MATCHMAKING_PAGE") && (
+                <BurgerItem route={"/matchmaking"}>
+                    <FaGamepad/>
+                    <p>{t("page.matchmaking")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("MAINTENANCE_PAGE") && (
+                <BurgerItem route={"/maintenance"}>
+                    <FaPersonDigging/>
+                    <p>{t("page.maintenance")}</p>
+                </BurgerItem>
+            )}
+            {permissions.has("BANNED_PLAYERS_PAGE") && (
+                <BurgerItem route={"/bans"}>
+                    <FaGavel/>
+                    <p>{t("page.banned_players")}</p>
+                </BurgerItem>
+            )}
         </BurgerMenu>
         <div className={styles.outlet}>
             {error ? <ErrorRoute/> : <Outlet/>}

@@ -1,0 +1,33 @@
+.toastHost {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    z-index: 1000;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.toast {
+    min-width: min(320px, calc(100vw - 32px));
+    max-width: min(520px, calc(100vw - 32px));
+    border: 1px solid color-mix(in srgb, currentColor, transparent 68%);
+    border-radius: 999px;
+    background: color-mix(in srgb, #111827, black 20%);
+    box-shadow: 0 14px 34px rgb(0 0 0 / 38%);
+    color: white;
+    padding: 12px 18px;
+    font-weight: 700;
+    text-align: center;
+    animation: slideUp 180ms ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

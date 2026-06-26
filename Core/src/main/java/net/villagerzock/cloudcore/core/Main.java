@@ -323,10 +323,9 @@ public class Main {
             System.out.println("Shutting Down All Servers and Proxy");
             CoreLogForwarder.stop();
             CoreMetricForwarder.stop();
-            ServerManager.shutdown();
-
             ApiServer.stop();
             CoreHandshakeInitializer.stop();
+            ServerManager.shutdown();
         }
 
     }
