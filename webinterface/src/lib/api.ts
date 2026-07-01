@@ -108,6 +108,7 @@ export type Server = {
     template: string;
     online: number;
     max: number;
+    singleton: boolean;
 }
 
 export type ServerTemplate = {
@@ -300,6 +301,27 @@ async function postJson<T>(path: string, body: object): Promise<T> {
     return response.json() as Promise<T>;
 }
 
+async function postNoContent(path: string): Promise<void> {
+    const token = getAuthTokenOrRedirect<void>();
+    if (typeof token !== "string") return token;
+    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+        method: "POST",
+        headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+    });
+
+    if (response.status === 401) {
+        redirectToLogin();
+        return waitForRedirect<void>();
+    }
+
+    if (!response.ok) {
+        throw new Error(await getErrorMessage(response, `API request failed (${response.status} ${response.statusText})`));
+    }
+}
+
 async function patchJson<T>(path: string, body: object): Promise<T> {
     const token = getAuthTokenOrRedirect<T>();
     if (typeof token !== "string") return token;
@@ -396,6 +418,27 @@ export function launchServer(template: string, singleton: boolean): Promise<stri
 
 export function getServerByName(name: string): Promise<Server> {
     return getJson(`/servers/${encodeURIComponent(name)}`);
+}
+
+export function stopServer(name: string): Promise<void> {
+    return postNoContent(`/servers/${encodeURIComponent(name)}/stop`);
+}
+
+export function restartServer(name: string): Promise<string> {
+    return postJson<{name: string}>(`/servers/${encodeURIComponent(name)}/restart`, {})
+        .then(response => response.name);
+}
+
+export function startProxy(): Promise<void> {
+    return postNoContent("/proxy/start");
+}
+
+export function stopProxy(): Promise<void> {
+    return postNoContent("/proxy/stop");
+}
+
+export function restartProxy(): Promise<void> {
+    return postNoContent("/proxy/restart");
 }
 
 export function getServerPlayerCountData(name: string): Promise<PlayerCountData[]> {

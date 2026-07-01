@@ -1,13 +1,16 @@
 package net.villagerzock.velocity;
 
 import com.google.inject.Inject;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.player.KickedFromServerEvent;
+import com.velocitypowered.api.event.player.KickedFromServerEvent.RedirectPlayer;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
@@ -19,9 +22,11 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.villagerzock.velocity.config.CloudCoreConfiguration;
 import net.villagerzock.velocity.service.MaintenanceService;
+import net.villagerzock.velocity.service.MatchmakingService;
 import net.villagerzock.velocity.service.MetricCollectionService;
 import net.villagerzock.velocity.service.ServerMangementService;
 import org.slf4j.Logger;
@@ -29,8 +34,11 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.velocitypowered.api.event.player.KickedFromServerEvent.*;
 
 @Plugin(
         id = "cloudcore",
@@ -93,60 +101,124 @@ public class CloudCoreVelocityPlugin {
         spring.setContextClassLoader(CloudCoreVelocityPlugin.class.getClassLoader());
         spring.start();
 
-        BrigadierCommand cloudcoreCommand = new BrigadierCommand(
-                LiteralArgumentBuilder.<CommandSource>literal("cloudcore")
-                        .then(
-                                LiteralArgumentBuilder.<CommandSource>literal("maintenance")
-                                        .then(
-                                                LiteralArgumentBuilder.<CommandSource>literal("on").executes(context -> {
-                                                    getCachedBeanByType(MaintenanceService.class).turnOn();
-                                                    return 0;
-                                                })
-                                        )
-                                        .then(
-                                                LiteralArgumentBuilder.<CommandSource>literal("off").executes(context -> {
-                                                    getCachedBeanByType(MaintenanceService.class).turnOff();
-                                                    return 0;
-                                                })
-                                        )
-                                        .then(
-                                                LiteralArgumentBuilder.<CommandSource>literal("add")
-                                                        .then(
-                                                                playerNameArgument().executes(context -> {
-                                                                    Player player = findOnlinePlayerOrNotify(
-                                                                            context.getSource(),
-                                                                            StringArgumentType.getString(context, "player"));
-                                                                    if (player == null) {
-                                                                        return 0;
-                                                                    }
-
-                                                                    getCachedBeanByType(MaintenanceService.class).addPlayer(player);
-
-                                                                    return 0;
-                                                                })
-                                                        )
-                                        )
-                                        .then(
-                                                LiteralArgumentBuilder.<CommandSource>literal("remove")
-                                                        .then(
-                                                                playerNameArgument().executes(context -> {
-                                                                    Player player = findOnlinePlayerOrNotify(
-                                                                            context.getSource(),
-                                                                            StringArgumentType.getString(context, "player"));
-                                                                    if (player == null) {
-                                                                        return 0;
-                                                                    }
-
-                                                                    getCachedBeanByType(MaintenanceService.class).removePlayer(player);
-
-                                                                    return 0;
-                                                                })
-                                                        )
-                                        )
-                        )
-        );
+        BrigadierCommand cloudcoreCommand = new BrigadierCommand(cloudCoreCommand());
 
         proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("cloudcore").build(), cloudcoreCommand);
+    }
+
+    private LiteralArgumentBuilder<CommandSource> cloudCoreCommand() {
+        return LiteralArgumentBuilder.<CommandSource>literal("cloudcore")
+                .executes(context -> {
+                    sendOverview(context.getSource());
+                    return 1;
+                })
+                .then(LiteralArgumentBuilder.<CommandSource>literal("status")
+                        .executes(context -> {
+                            sendOverview(context.getSource());
+                            return 1;
+                        }))
+                .then(maintenanceCommand())
+                .then(matchmakingCommand())
+                .then(serversCommand());
+    }
+
+    private LiteralArgumentBuilder<CommandSource> maintenanceCommand() {
+        return LiteralArgumentBuilder.<CommandSource>literal("maintenance")
+                .executes(context -> {
+                    MaintenanceService maintenanceService = requireBean(context.getSource(), MaintenanceService.class);
+                    if (maintenanceService == null) return 0;
+
+                    context.getSource().sendMessage(Component.text(
+                            "Maintenance is " + (maintenanceService.isActive() ? "enabled" : "disabled") + ".",
+                            maintenanceService.isActive() ? NamedTextColor.RED : NamedTextColor.GREEN));
+                    return 1;
+                })
+                .then(LiteralArgumentBuilder.<CommandSource>literal("on").executes(context -> {
+                    MaintenanceService maintenanceService = requireBean(context.getSource(), MaintenanceService.class);
+                    if (maintenanceService == null) return 0;
+
+                    maintenanceService.turnOn();
+                    context.getSource().sendMessage(Component.text("Maintenance enabled.", NamedTextColor.GREEN));
+                    return 1;
+                }))
+                .then(LiteralArgumentBuilder.<CommandSource>literal("off").executes(context -> {
+                    MaintenanceService maintenanceService = requireBean(context.getSource(), MaintenanceService.class);
+                    if (maintenanceService == null) return 0;
+
+                    maintenanceService.turnOff();
+                    context.getSource().sendMessage(Component.text("Maintenance disabled.", NamedTextColor.GREEN));
+                    return 1;
+                }))
+                .then(LiteralArgumentBuilder.<CommandSource>literal("add")
+                        .then(playerNameArgument().executes(context -> {
+                            Player player = findOnlinePlayerOrNotify(
+                                    context.getSource(),
+                                    StringArgumentType.getString(context, "player"));
+                            if (player == null) return 0;
+
+                            MaintenanceService maintenanceService = requireBean(context.getSource(), MaintenanceService.class);
+                            if (maintenanceService == null) return 0;
+
+                            maintenanceService.addPlayer(player);
+                            context.getSource().sendMessage(Component.text(
+                                    "Added " + player.getUsername() + " to maintenance whitelist.",
+                                    NamedTextColor.GREEN));
+                            return 1;
+                        })))
+                .then(LiteralArgumentBuilder.<CommandSource>literal("remove")
+                        .then(playerNameArgument().executes(context -> {
+                            Player player = findOnlinePlayerOrNotify(
+                                    context.getSource(),
+                                    StringArgumentType.getString(context, "player"));
+                            if (player == null) return 0;
+
+                            MaintenanceService maintenanceService = requireBean(context.getSource(), MaintenanceService.class);
+                            if (maintenanceService == null) return 0;
+
+                            maintenanceService.removePlayer(player);
+                            context.getSource().sendMessage(Component.text(
+                                    "Removed " + player.getUsername() + " from maintenance whitelist.",
+                                    NamedTextColor.GREEN));
+                            return 1;
+                        })));
+    }
+
+    private LiteralArgumentBuilder<CommandSource> matchmakingCommand() {
+        return LiteralArgumentBuilder.<CommandSource>literal("matchmaking")
+                .executes(context -> {
+                    sendMatchmakingConfigurations(context.getSource());
+                    return 1;
+                })
+                .then(LiteralArgumentBuilder.<CommandSource>literal("list")
+                        .executes(context -> {
+                            sendMatchmakingConfigurations(context.getSource());
+                            return 1;
+                        }))
+                .then(LiteralArgumentBuilder.<CommandSource>literal("queue")
+                        .then(playerNameArgument()
+                                .then(matchmakingTypeArgument()
+                                        .then(RequiredArgumentBuilder.<CommandSource, Integer>argument("mmv", IntegerArgumentType.integer(0))
+                                                .executes(context -> {
+                                                    queueMatchmaking(
+                                                            context.getSource(),
+                                                            StringArgumentType.getString(context, "player"),
+                                                            StringArgumentType.getString(context, "type"),
+                                                            IntegerArgumentType.getInteger(context, "mmv"));
+                                                    return 1;
+                                                })))));
+    }
+
+    private LiteralArgumentBuilder<CommandSource> serversCommand() {
+        return LiteralArgumentBuilder.<CommandSource>literal("servers")
+                .executes(context -> {
+                    sendServers(context.getSource());
+                    return 1;
+                })
+                .then(LiteralArgumentBuilder.<CommandSource>literal("list")
+                        .executes(context -> {
+                            sendServers(context.getSource());
+                            return 1;
+                        }));
     }
 
     private RequiredArgumentBuilder<CommandSource, String> playerNameArgument() {
@@ -159,11 +231,128 @@ public class CloudCoreVelocityPlugin {
                 });
     }
 
+    private RequiredArgumentBuilder<CommandSource, String> matchmakingTypeArgument() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("type", StringArgumentType.word())
+                .suggests((context, builder) -> {
+                    CloudCoreConfiguration configuration = getCachedBeanByType(CloudCoreConfiguration.class);
+                    if (configuration != null && configuration.getMatchmakingServerConfigs() != null) {
+                        configuration.getMatchmakingServerConfigs().keySet().forEach(builder::suggest);
+                    }
+                    return builder.buildFuture();
+                });
+    }
+
+    private void sendOverview(CommandSource source) {
+        MaintenanceService maintenanceService = requireBean(source, MaintenanceService.class);
+        ServerMangementService serverMangementService = requireBean(source, ServerMangementService.class);
+        CloudCoreConfiguration configuration = requireBean(source, CloudCoreConfiguration.class);
+        if (maintenanceService == null || serverMangementService == null || configuration == null) {
+            return;
+        }
+
+        int matchmakingTypes = configuration.getMatchmakingServerConfigs() == null
+                ? 0
+                : configuration.getMatchmakingServerConfigs().size();
+        source.sendMessage(Component.text("CloudCore status", NamedTextColor.AQUA));
+        source.sendMessage(Component.text("Maintenance: "
+                + (maintenanceService.isActive() ? "enabled" : "disabled"), NamedTextColor.GRAY));
+        source.sendMessage(Component.text("Registered servers: "
+                + serverMangementService.getServers().size(), NamedTextColor.GRAY));
+        source.sendMessage(Component.text("Matchmaking types: " + matchmakingTypes, NamedTextColor.GRAY));
+        source.sendMessage(Component.text("Lobby type: "
+                + emptyFallback(configuration.getLobbyServer(), "not configured"), NamedTextColor.GRAY));
+    }
+
+    private void sendMatchmakingConfigurations(CommandSource source) {
+        CloudCoreConfiguration configuration = requireBean(source, CloudCoreConfiguration.class);
+        if (configuration == null) {
+            return;
+        }
+        if (configuration.getMatchmakingServerConfigs() == null || configuration.getMatchmakingServerConfigs().isEmpty()) {
+            source.sendMessage(Component.text("No matchmaking types configured.", NamedTextColor.YELLOW));
+            return;
+        }
+
+        source.sendMessage(Component.text("Matchmaking types", NamedTextColor.AQUA));
+        configuration.getMatchmakingServerConfigs().forEach((name, config) -> source.sendMessage(Component.text(
+                name
+                        + " -> template=" + config.template()
+                        + ", maxPlayers=" + config.maxPlayersPerServer()
+                        + ", maxServers=" + config.maxAmountOfServers()
+                        + ", teamSize=" + config.playersPerTeam()
+                        + ", maxMmvDiff=" + config.maxMmvDiff(),
+                NamedTextColor.GRAY)));
+    }
+
+    private void sendServers(CommandSource source) {
+        ServerMangementService serverMangementService = requireBean(source, ServerMangementService.class);
+        if (serverMangementService == null) {
+            return;
+        }
+        if (serverMangementService.getServers().isEmpty()) {
+            source.sendMessage(Component.text("No servers registered.", NamedTextColor.YELLOW));
+            return;
+        }
+
+        source.sendMessage(Component.text("Registered servers", NamedTextColor.AQUA));
+        serverMangementService.getServers().forEach((name, type) -> {
+            int players = proxy.getServer(name)
+                    .map(server -> server.getPlayersConnected().size())
+                    .orElse(0);
+            source.sendMessage(Component.text(name + " -> type=" + type + ", players=" + players, NamedTextColor.GRAY));
+        });
+    }
+
+    private void queueMatchmaking(CommandSource source, String username, String type, int mmv) {
+        Player player = findOnlinePlayerOrNotify(source, username);
+        if (player == null) {
+            return;
+        }
+
+        MatchmakingService matchmakingService = requireBean(source, MatchmakingService.class);
+        if (matchmakingService == null) {
+            return;
+        }
+
+        try {
+            matchmakingService.queue(List.of(player.getUniqueId()), type, mmv)
+                    .thenAccept(server -> {
+                        player.createConnectionRequest(server).fireAndForget();
+                        source.sendMessage(Component.text(
+                                "Queued " + player.getUsername() + " into " + server.getServerInfo().getName() + ".",
+                                NamedTextColor.GREEN));
+                    })
+                    .exceptionally(exception -> {
+                        source.sendMessage(Component.text(
+                                "Matchmaking failed: " + exception.getMessage(),
+                                NamedTextColor.RED));
+                        return null;
+                    });
+            source.sendMessage(Component.text(
+                    "Queued " + player.getUsername() + " for matchmaking type " + type + ".",
+                    NamedTextColor.GREEN));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            source.sendMessage(Component.text(exception.getMessage(), NamedTextColor.RED));
+        }
+    }
+
     private Player findOnlinePlayerOrNotify(CommandSource source, String username) {
         return proxy.getPlayer(username).orElseGet(() -> {
             source.sendMessage(Component.text("Player is not online: " + username, NamedTextColor.RED));
             return null;
         });
+    }
+
+    private <T> T requireBean(CommandSource source, Class<T> type) {
+        T bean = getCachedBeanByType(type);
+        if (bean == null) {
+            source.sendMessage(Component.text("CloudCore is still starting.", NamedTextColor.RED));
+        }
+        return bean;
+    }
+
+    private String emptyFallback(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     @Subscribe
@@ -178,7 +367,7 @@ public class CloudCoreVelocityPlugin {
         CloudCoreConfiguration configuration = application.getBean(CloudCoreConfiguration.class);
 
         if (maintenanceService.isActive() && !maintenanceService.hasPlayer(event.getPlayer())) {
-            event.getPlayer().disconnect(Component.text("This Server is currently in Maintenance", NamedTextColor.RED));
+            event.getPlayer().disconnect(Component.text("This Network is currently in Maintenance", NamedTextColor.RED));
             return;
         }
 
@@ -195,8 +384,66 @@ public class CloudCoreVelocityPlugin {
     }
 
     @Subscribe
+    public void onPlayerKicked(KickedFromServerEvent event) {
+        if (isSpringStarting()) {
+            event.setResult(DisconnectPlayer.create(
+                    Component.text("CloudCore is still starting...", NamedTextColor.RED)
+            ));
+            return;
+        }
+
+        ServerMangementService serverManagementService = application.getBean(ServerMangementService.class);
+        MaintenanceService maintenanceService = application.getBean(MaintenanceService.class);
+        CloudCoreConfiguration configuration = application.getBean(CloudCoreConfiguration.class);
+
+        if (maintenanceService.isActive() && !maintenanceService.hasPlayer(event.getPlayer())) {
+            event.setResult(DisconnectPlayer.create(
+                    Component.text("This network is currently in maintenance.", NamedTextColor.RED)
+            ));
+            return;
+        }
+
+        RegisteredServer target = serverManagementService.findAnyServerOfType(configuration.getLobbyServer());
+
+        if (target == null || target.equals(event.getServer())) {
+            event.setResult(DisconnectPlayer.create(
+                    Component.text(
+                            "There are no available lobby servers right now! Please try again later.",
+                            NamedTextColor.RED
+                    )
+            ));
+            return;
+        }
+
+        Component reason = event.getServerKickReason()
+                .orElse(Component.text("No reason provided.", NamedTextColor.RED));
+
+        Component message = Component.text(
+                "You have been sent to " + target.getServerInfo().getName() + ". ",
+                NamedTextColor.RED
+        ).append(reason);
+
+        event.setResult(RedirectPlayer.create(target, message));
+    }
+
+    @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         recordPlayerPeak();
+    }
+
+    @Subscribe
+    public void onDisconnect(DisconnectEvent event) {
+        recordPlayerPeak();
+        if (isSpringStarting()) {
+            return;
+        }
+
+        String previousServerName = event.getPlayer()
+                .getCurrentServer()
+                .map(connection -> connection.getServerInfo().getName())
+                .orElse(null);
+        getCachedBeanByType(MatchmakingService.class)
+                .handlePlayerDisconnect(event.getPlayer().getUniqueId(), previousServerName);
     }
 
     @Subscribe

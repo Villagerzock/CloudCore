@@ -85,8 +85,16 @@ function FolderDisplay({
 
     useEffect(() => {
         function closeMenus(event: MouseEvent) {
-            if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const targetElement = target instanceof Element ? target : null;
+
+            if (rootRef.current && !rootRef.current.contains(target)) {
                 setUploadOpen(false);
+                setActionOpen(null);
+                return;
+            }
+
+            if (!targetElement?.closest("[data-folder-action-menu]")) {
                 setActionOpen(null);
             }
         }
@@ -375,7 +383,7 @@ function FolderDisplay({
                                 <span className={styles.name}>{file.name}</span>
                             </button>
                             {hasActions && (
-                                <div className={styles.actionWrap}>
+                                <div className={styles.actionWrap} data-folder-action-menu>
                                     <button
                                         className={styles.actionButton}
                                         type="button"

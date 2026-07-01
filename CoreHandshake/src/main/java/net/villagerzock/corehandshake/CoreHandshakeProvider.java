@@ -27,6 +27,16 @@ public interface CoreHandshakeProvider {
 
     String launchServer(String template, boolean singleton);
 
+    void stopServer(String serverName);
+
+    String restartServer(String serverName);
+
+    void startProxy();
+
+    void stopProxy();
+
+    void restartProxy();
+
     List<ServerTemplate> getTemplates();
 
     ServerTemplate createTemplate(CreateTemplateRequest request);

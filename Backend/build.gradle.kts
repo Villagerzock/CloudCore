@@ -26,6 +26,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation("org.projectlombok:lombok")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
@@ -34,6 +35,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("org.apache.sshd:sshd-core:2.17.1")
     implementation("org.apache.sshd:sshd-sftp:2.17.1")
+    annotationProcessor("org.projectlombok:lombok")
 }
 
 tasks.withType<Test> {

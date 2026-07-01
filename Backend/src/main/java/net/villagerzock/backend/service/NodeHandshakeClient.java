@@ -81,6 +81,33 @@ public class NodeHandshakeClient {
         return get(nodeId, "/servers/{serverName}", serverName, ServerDto.class);
     }
 
+    public void stopServer(long nodeId, String serverName) {
+        post(nodeId, "/servers/" + encodePathSegment(serverName) + "/stop", null);
+    }
+
+    public LaunchServerResponse restartServer(long nodeId, String serverName) {
+        try {
+            return client(nodeId, Duration.ofSeconds(40)).post()
+                    .uri("/servers/{serverName}/restart", serverName)
+                    .retrieve()
+                    .body(LaunchServerResponse.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public void startProxy(long nodeId) {
+        post(nodeId, "/proxy/start", null);
+    }
+
+    public void stopProxy(long nodeId) {
+        post(nodeId, "/proxy/stop", null);
+    }
+
+    public void restartProxy(long nodeId) {
+        post(nodeId, "/proxy/restart", null);
+    }
+
     public List<ServerTemplateDto> getTemplates(long nodeId) {
         return get(nodeId, "/templates", TEMPLATE_LIST);
     }

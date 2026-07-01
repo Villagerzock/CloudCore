@@ -346,6 +346,10 @@ try = [
         }
     }
 
+    public static void startProxy() {
+        launchProxyWizard();
+    }
+
     private static void writeProxyLaunchConfig(
             Path configFile,
             String proxyPort,

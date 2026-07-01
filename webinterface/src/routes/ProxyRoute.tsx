@@ -3,11 +3,28 @@ import styles from "./ProxyRoute.module.css"
 import LineChart from "../components/LineChart.tsx";
 import {useProxyMetrics} from "../hooks/useProxyMetrics.ts";
 import {useI18n} from "../lib/i18n.ts";
+import Button from "../components/Button.tsx";
+import {restartProxy, startProxy, stopProxy} from "../lib/api.ts";
+import {useState} from "react";
 
 
 function ProxyRoute(){
     const { playerCountData, networkData, error } = useProxyMetrics("minutes", "minutes");
     const {t} = useI18n();
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [action, setAction] = useState<string | null>(null);
+
+    async function runAction(name: string, operation: () => Promise<void>) {
+        try {
+            setAction(name);
+            setActionError(null);
+            await operation();
+        } catch (reason) {
+            setActionError(reason instanceof Error ? reason.message : "Aktion fehlgeschlagen");
+        } finally {
+            setAction(null);
+        }
+    }
 
     return (
         <>
@@ -16,6 +33,19 @@ function ProxyRoute(){
                     <LiveConsole consoleId={"proxy"}/>
                 </div>
                 <div className={styles.stats}>
+                    <h2>Proxy</h2>
+                    <div className={styles.actions}>
+                        <Button type="primary" onClick={() => runAction("start", startProxy)} disabled={action !== null}>
+                            Start
+                        </Button>
+                        <Button type="secondary" onClick={() => runAction("restart", restartProxy)} disabled={action !== null}>
+                            Neustart
+                        </Button>
+                        <Button type="danger" onClick={() => runAction("stop", stopProxy)} disabled={action !== null}>
+                            Stop
+                        </Button>
+                    </div>
+                    {actionError && <p role="alert">{actionError}</p>}
                     {error && <p role={"alert"}>{error}</p>}
                     <LineChart
                         data={playerCountData}

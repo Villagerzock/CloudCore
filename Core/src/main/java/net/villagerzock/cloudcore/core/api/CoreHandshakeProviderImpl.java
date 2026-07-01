@@ -76,6 +76,43 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
     }
 
     @Override
+    public void stopServer(String serverName) {
+        ServerManager.RunningServer server = ServerManager.getRunningServers().get(requireValue(serverName, "serverName"));
+        if (server == null) {
+            throw new NoSuchElementException("Server not found: " + serverName);
+        }
+        ServerManager.shutdownServer(server);
+    }
+
+    @Override
+    public String restartServer(String serverName) {
+        ServerManager.RunningServer server = ServerManager.getRunningServers().get(requireValue(serverName, "serverName"));
+        if (server == null) {
+            throw new NoSuchElementException("Server not found: " + serverName);
+        }
+        String template = server.templateName();
+        boolean singleton = server.singleton();
+        ServerManager.shutdownServer(server);
+        return launchServer(template, singleton);
+    }
+
+    @Override
+    public void startProxy() {
+        ServerManager.startProxy();
+    }
+
+    @Override
+    public void stopProxy() {
+        ServerManager.shutdownProxy();
+    }
+
+    @Override
+    public void restartProxy() {
+        ServerManager.shutdownProxy();
+        ServerManager.startProxy();
+    }
+
+    @Override
     public List<ServerTemplate> getTemplates() {
         List<ServerTemplate> result = new ArrayList<>();
         Path templatesDir = ServerManager.BASE_DIR.resolve("templates");
@@ -196,8 +233,8 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
 
     @Override
     public MaintenanceStatus addMaintenancePlayer(AddMaintenancePlayerRequest request) {
-        UUID uuid = resolveMaintenancePlayer(request.player());
-        ProxyServerManager.getInstance().addPlayer(uuid);
+        ResolvedMaintenancePlayer player = resolveMaintenancePlayer(request.player());
+        ProxyServerManager.getInstance().addPlayer(player.uuid(), player.username());
         return getMaintenanceStatus();
     }
 
@@ -604,20 +641,21 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
         }
     }
 
-    private UUID resolveMaintenancePlayer(String player) {
+    private ResolvedMaintenancePlayer resolveMaintenancePlayer(String player) {
         String normalized = requireValue(player, "player");
         try {
-            return UUID.fromString(normalized);
+            UUID uuid = UUID.fromString(normalized);
+            return new ResolvedMaintenancePlayer(uuid, resolveMojangName(uuid).orElse(null));
         } catch (IllegalArgumentException ignored) {
             // Not a UUID, resolve as Minecraft name below.
         }
         if (!MC_NAME.matcher(normalized).matches()) {
             throw new IllegalArgumentException("Player must be a UUID or Minecraft username");
         }
-        return resolveMojangUuid(normalized);
+        return resolveMojangProfile(normalized);
     }
 
-    private UUID resolveMojangUuid(String name) {
+    private ResolvedMaintenancePlayer resolveMojangProfile(String name) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.mojang.com/users/profiles/minecraft/" + URLEncoder.encode(name, StandardCharsets.UTF_8)))
@@ -634,12 +672,37 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
             if (profile == null || profile.id == null || profile.id.isBlank()) {
                 throw new NoSuchElementException("Minecraft player not found: " + name);
             }
-            return undashedUuid(profile.id);
+            String username = profile.name == null || profile.name.isBlank() ? name : profile.name;
+            return new ResolvedMaintenancePlayer(undashedUuid(profile.id), username);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to resolve Minecraft player", exception);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while resolving Minecraft player", exception);
+        }
+    }
+
+    private Optional<String> resolveMojangName(UUID uuid) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://sessionserver.mojang.com/session/minecraft/profile/"
+                            + uuid.toString().replace("-", "")))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                return Optional.empty();
+            }
+            MojangProfile profile = GSON.fromJson(response.body(), MojangProfile.class);
+            if (profile == null || profile.name == null || profile.name.isBlank()) {
+                return Optional.empty();
+            }
+            return Optional.of(profile.name);
+        } catch (IOException exception) {
+            return Optional.empty();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
         }
     }
 
@@ -661,6 +724,10 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
 
     private static class MojangProfile {
         String id;
+        String name;
+    }
+
+    private record ResolvedMaintenancePlayer(UUID uuid, String username) {
     }
 
     private String normalizeRelativePath(String path) {

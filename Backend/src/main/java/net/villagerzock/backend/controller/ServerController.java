@@ -72,6 +72,27 @@ public class ServerController {
         return serverService.getServerByName(nodeId, name);
     }
 
+    @PostMapping("/{name}/stop")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void stopServer(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            Authentication authentication,
+            @PathVariable String name
+    ) {
+        permissions.require(authentication, nodeId, NodePermission.SERVER_STATUS);
+        serverService.stopServer(nodeId, name);
+    }
+
+    @PostMapping("/{name}/restart")
+    public LaunchServerResponse restartServer(
+            @RequestAttribute("cloudcore.nodeId") long nodeId,
+            Authentication authentication,
+            @PathVariable String name
+    ) {
+        permissions.require(authentication, nodeId, NodePermission.SERVER_STATUS);
+        return serverService.restartServer(nodeId, name);
+    }
+
     @GetMapping("/{name}/metrics/player-count")
     public List<ChartPointDto> getPlayerCount(
             @RequestAttribute("cloudcore.nodeId") long nodeId,

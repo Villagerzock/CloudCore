@@ -12,21 +12,38 @@ import net.villagerzock.backend.dto.LaunchServerResponse;
 import net.villagerzock.backend.dto.MatchmakingConfigurationDto;
 import net.villagerzock.backend.dto.MaintenanceStatusDto;
 import net.villagerzock.backend.dto.UploadTemplateFileRequest;
+import net.villagerzock.backend.entity.Username;
+import net.villagerzock.backend.repository.UsernameRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Base64;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class ServerService {
     private final NodeHandshakeClient handshakeClient;
+    private final UsernameRepository usernameRepository;
 
-    public ServerService(NodeHandshakeClient handshakeClient) {
+    public ServerService(NodeHandshakeClient handshakeClient, UsernameRepository usernameRepository) {
         this.handshakeClient = handshakeClient;
+        this.usernameRepository = usernameRepository;
     }
 
     public List<ServerDto> getRunningServers(long nodeId) {
@@ -39,6 +56,26 @@ public class ServerService {
 
     public ServerDto getServerByName(long nodeId, String serverName) {
         return handshakeClient.getServer(nodeId, serverName);
+    }
+
+    public void stopServer(long nodeId, String serverName) {
+        handshakeClient.stopServer(nodeId, serverName);
+    }
+
+    public LaunchServerResponse restartServer(long nodeId, String serverName) {
+        return handshakeClient.restartServer(nodeId, serverName);
+    }
+
+    public void startProxy(long nodeId) {
+        handshakeClient.startProxy(nodeId);
+    }
+
+    public void stopProxy(long nodeId) {
+        handshakeClient.stopProxy(nodeId);
+    }
+
+    public void restartProxy(long nodeId) {
+        handshakeClient.restartProxy(nodeId);
     }
 
     public List<ServerTemplateDto> getTemplates(long nodeId) {
@@ -65,19 +102,30 @@ public class ServerService {
     }
 
     public MaintenanceStatusDto getMaintenanceStatus(long nodeId) {
-        return handshakeClient.getMaintenanceStatus(nodeId);
+        return withMaintenancePlayerNames(handshakeClient.getMaintenanceStatus(nodeId));
+    }
+
+    private MaintenanceStatusDto withMaintenancePlayerNames(MaintenanceStatusDto dto) {
+        for (int i = 0; i < dto.players().size(); i++) {
+            if (dto.players().get(i).name() == null){
+                MaintenanceStatusDto.PlayerEntry p = dto.players().get(i);
+                dto.players().set(i, new MaintenanceStatusDto.PlayerEntry(p.uuid(), getUsernameFromUuid(p.uuid()).orElse(null)));
+            }
+        }
+
+        return dto;
     }
 
     public MaintenanceStatusDto setMaintenanceActive(long nodeId, boolean active) {
-        return handshakeClient.setMaintenanceActive(nodeId, active);
+        return withMaintenancePlayerNames(handshakeClient.setMaintenanceActive(nodeId, active));
     }
 
     public MaintenanceStatusDto addMaintenancePlayer(long nodeId, AddMaintenancePlayerRequest request) {
-        return handshakeClient.addMaintenancePlayer(nodeId, request);
+        return withMaintenancePlayerNames(handshakeClient.addMaintenancePlayer(nodeId, request));
     }
 
     public MaintenanceStatusDto removeMaintenancePlayer(long nodeId, String uuid) {
-        return handshakeClient.removeMaintenancePlayer(nodeId, uuid);
+        return withMaintenancePlayerNames(handshakeClient.removeMaintenancePlayer(nodeId, uuid));
     }
 
     public FileSystemResponse getTemplateFileSystemPath(long nodeId, String template, String path) {
@@ -187,5 +235,49 @@ public class ServerService {
                 .queryParam("node", nodeId)
                 .build()
                 .toUriString();
+    }
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    public Optional<String> getUsernameFromUuid(UUID uuid) {
+        Optional<Username> usernameOpt = usernameRepository.findById(uuid);
+        if (usernameOpt.isPresent()) {
+            Username username = usernameOpt.get();
+            if (Instant.now().isBefore(username.getCreated().plus(2, ChronoUnit.DAYS))) {
+                return Optional.of(username.getUsername());
+            }
+        }
+
+        String url = "https://sessionserver.mojang.com/session/minecraft/profile/"
+                + uuid.toString().replace("-", "");
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                return Optional.empty();
+            }
+
+            JsonNode json = OBJECT_MAPPER.readTree(response.body());
+            String username = json.get("name").asString();
+            Username cache = new Username();
+            cache.setUsername(username);
+            cache.setCreated(Instant.now());
+            cache.setUuid(uuid);
+            usernameRepository.save(cache);
+            return Optional.of(username);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 }

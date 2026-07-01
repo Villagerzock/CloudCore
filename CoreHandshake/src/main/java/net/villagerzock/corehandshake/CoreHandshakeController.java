@@ -64,6 +64,35 @@ public class CoreHandshakeController {
         return provider.getServer(serverName).orElseThrow(() -> notFound("Server", serverName));
     }
 
+    @PostMapping("/servers/{serverName}/stop")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void stopServer(@PathVariable String serverName) {
+        provider.stopServer(serverName);
+    }
+
+    @PostMapping("/servers/{serverName}/restart")
+    public LaunchServerResponse restartServer(@PathVariable String serverName) {
+        return new LaunchServerResponse(provider.restartServer(serverName));
+    }
+
+    @PostMapping("/proxy/start")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void startProxy() {
+        provider.startProxy();
+    }
+
+    @PostMapping("/proxy/stop")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void stopProxy() {
+        provider.stopProxy();
+    }
+
+    @PostMapping("/proxy/restart")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restartProxy() {
+        provider.restartProxy();
+    }
+
     @GetMapping("/templates")
     public List<ServerTemplate> getTemplates() {
         return provider.getTemplates();

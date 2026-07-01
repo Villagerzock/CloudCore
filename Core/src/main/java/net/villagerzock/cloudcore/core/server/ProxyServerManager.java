@@ -163,6 +163,15 @@ public class ProxyServerManager {
         send("POST", "/api/maintenance/?playerUUID=" + player, "");
     }
 
+    public void addPlayer(UUID player, String playerName) {
+        if (playerName == null || playerName.isBlank()) {
+            addPlayer(player);
+            return;
+        }
+        send("POST", "/api/maintenance/?playerUUID=" + player
+                + "&playerName=" + URLEncoder.encode(playerName, StandardCharsets.UTF_8), "");
+    }
+
     public void removePlayer(UUID player) {
         send("DELETE", "/api/maintenance?playerUUID=" + player, "");
     }

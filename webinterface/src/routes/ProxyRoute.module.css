@@ -21,6 +21,12 @@
     gap: 16px;
 }
 
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .console {
     flex: 1;
     min-width: 0;

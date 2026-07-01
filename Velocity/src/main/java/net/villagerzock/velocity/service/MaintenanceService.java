@@ -56,12 +56,17 @@ public class MaintenanceService {
     }
 
     public void addPlayer(Player player){
-        addPlayer(player.getUniqueId());
+        addPlayer(player.getUniqueId(), player.getUsername());
     }
 
     public void addPlayer(UUID uuid){
+        addPlayer(uuid, null);
+    }
+
+    public void addPlayer(UUID uuid, String username){
         MaintenancePlayer maintenancePlayer = new MaintenancePlayer();
         maintenancePlayer.setUuid(uuid);
+        maintenancePlayer.setUsername(normalizeUsername(username));
         maintenancePlayer.setAddedOn(Instant.now());
 
         maintenancePlayerRepo.save(maintenancePlayer);
@@ -76,5 +81,12 @@ public class MaintenanceService {
 
     public boolean hasPlayer(Player player){
         return maintenancePlayerRepo.existsById(player.getUniqueId());
+    }
+
+    private String normalizeUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+        return username.trim();
     }
 }

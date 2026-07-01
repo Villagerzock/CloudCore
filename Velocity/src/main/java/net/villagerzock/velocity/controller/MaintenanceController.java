@@ -9,8 +9,6 @@ import net.villagerzock.velocity.service.MaintenanceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Timestamp;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -35,7 +33,7 @@ public class MaintenanceController {
                 maintenancePlayerRepo.findAll().stream()
                         .map(player -> new MaintenanceStatusDto.PlayerEntry(
                                 player.getUuid(),
-                                proxyServer.getPlayer(player.getUuid()).map(Player::getUsername).orElse(null)))
+                                maintenanceName(player)))
                         .toList());
     }
 
@@ -57,7 +55,7 @@ public class MaintenanceController {
         }
 
         if (playerUUID != null) {
-            maintenanceService.addPlayer(playerUUID);
+            maintenanceService.addPlayer(playerUUID, playerName);
             return ResponseEntity.ok("add " + playerUUID);
         }
 
@@ -84,5 +82,17 @@ public class MaintenanceController {
         if (playerOpt.isEmpty()) return ResponseEntity.notFound().build();
         maintenanceService.removePlayer(playerOpt.get());
         return ResponseEntity.ok("remove " + playerOpt.get().getUsername());
+    }
+
+    private String maintenanceName(MaintenancePlayer maintenancePlayer) {
+        if (maintenancePlayer.getUsername() != null && !maintenancePlayer.getUsername().isBlank()) {
+            return maintenancePlayer.getUsername();
+        }
+        Optional<String> onlineName = proxyServer.getPlayer(maintenancePlayer.getUuid()).map(Player::getUsername);
+        onlineName.ifPresent(username -> {
+            maintenancePlayer.setUsername(username);
+            maintenancePlayerRepo.save(maintenancePlayer);
+        });
+        return onlineName.orElse(null);
     }
 }

@@ -21,6 +21,7 @@ public class ApiServer {
 
         server.createContext("/started", ApiServer::started);
         server.createContext("/start", ApiServer::startServer);
+        server.createContext("/shutdown", ApiServer::shutdownServer);
 
         server.start();
     }
@@ -66,6 +67,8 @@ public class ApiServer {
                 throw new RuntimeException(e);
             }
         }
+        exchange.sendResponseHeaders(202, -1);
+        exchange.close();
     }
 
     private static void started(HttpExchange exchange) throws IOException {
@@ -77,6 +80,42 @@ public class ApiServer {
         ServerManager.WAIT_FOR_SPRING_START.complete(null);
 
         exchange.sendResponseHeaders(204, -1);
+        exchange.close();
+    }
+
+    private static void shutdownServer(HttpExchange exchange) throws IOException {
+        if (!exchange.getRequestMethod().equals("POST")) {
+            exchange.sendResponseHeaders(405, -1);
+            return;
+        }
+
+        Map<String, String> queryParams = new HashMap<>();
+        String query = exchange.getRequestURI().getQuery();
+        if (query != null) {
+            for (String param : query.split("&")) {
+                String[] parts = param.split("=", 2);
+                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+                String value = parts.length > 1
+                        ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
+                        : "";
+                queryParams.put(key, value);
+            }
+        }
+
+        String server = queryParams.get("server");
+        if (server == null || server.isBlank()) {
+            exchange.sendResponseHeaders(400, -1);
+            return;
+        }
+
+        ServerManager.RunningServer runningServer = ServerManager.getRunningServers().get(server);
+        if (runningServer == null) {
+            exchange.sendResponseHeaders(404, -1);
+            return;
+        }
+
+        ServerManager.shutdownServer(runningServer);
+        exchange.sendResponseHeaders(202, -1);
         exchange.close();
     }
 

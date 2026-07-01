@@ -24,5 +24,10 @@ public class MaintenancePlayer {
     @Getter
     @Setter
     @Column
+    private String username;
+
+    @Getter
+    @Setter
+    @Column
     private Instant addedOn;
 }

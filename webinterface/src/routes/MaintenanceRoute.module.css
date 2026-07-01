@@ -16,10 +16,6 @@
     text-align: left;
 }
 
-.header h1 {
-    margin: 0 0 4px;
-}
-
 .error {
     width: min(100%, 900px);
     margin: 0 auto 14px;
