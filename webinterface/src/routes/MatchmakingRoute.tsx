@@ -12,6 +12,9 @@ import {
 import Button from "../components/Button.tsx";
 import styles from "./MatchmakingRoute.module.css";
 import {useI18n} from "../lib/i18n.ts";
+import {useToast} from "../components/ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
+import Dropdown from "../components/Dropdown.tsx";
 
 const defaultConfiguration: MatchmakingConfiguration = {
     name: "",
@@ -27,6 +30,7 @@ const defaultConfiguration: MatchmakingConfiguration = {
 
 function MatchmakingRoute() {
     const {t} = useI18n();
+    const {showError, showToast} = useToast();
     const [configurations, setConfigurations] = useState<MatchmakingConfiguration[]>([]);
     const [templates, setTemplates] = useState<ServerTemplate[]>([]);
     const [drafts, setDrafts] = useState<Record<string, MatchmakingConfiguration>>({});
@@ -49,8 +53,12 @@ function MatchmakingRoute() {
     }
 
     useEffect(() => {
-        load().catch(reason => setError(reason instanceof Error ? reason.message : t("error.load_failed")));
-    }, []);
+        load().catch(reason => {
+            const message = errorMessage(reason, t("error.load_failed"));
+            setError(message);
+            showError(message);
+        });
+    }, [showError, t]);
 
     function updateDraft(name: string, changes: Partial<MatchmakingConfiguration>) {
         setDrafts(current => ({
@@ -80,8 +88,11 @@ function MatchmakingRoute() {
             setConfigurations(current => current.map(configuration => configuration.name === name ? saved : configuration));
             setDrafts(current => ({...current, [name]: saved}));
             setError(null);
+            showToast(t("action.save"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.save_failed"));
+            const message = errorMessage(reason, t("error.save_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(null);
         }
@@ -100,8 +111,11 @@ function MatchmakingRoute() {
                 template: templates[0]?.name ?? ""
             });
             setError(null);
+            showToast(t("action.add"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.save_failed"));
+            const message = errorMessage(reason, t("error.save_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(null);
         }
@@ -120,8 +134,11 @@ function MatchmakingRoute() {
                 return next;
             });
             setError(null);
+            showToast(t("action.delete"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.delete_failed"));
+            const message = errorMessage(reason, t("error.delete_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(null);
         }
@@ -183,6 +200,10 @@ function ConfigurationForm({
     onDelete
 }: ConfigurationFormProps) {
     const {t} = useI18n();
+    const templateOptions = templates.map(template => ({
+        value: template.name,
+        label: template.name
+    }));
 
     return (
         <form className={styles.card} onSubmit={onSubmit}>
@@ -205,15 +226,12 @@ function ConfigurationForm({
             </label>
             <label className={styles.field}>
                 <span>{t("field.template")}</span>
-                <select
+                <Dropdown
+                    id={`matchmaking-template-${configuration.name || "new"}`}
                     value={configuration.template}
-                    onChange={event => onChange({template: event.target.value})}
-                    required
-                >
-                    {templates.map(template => (
-                        <option key={template.name} value={template.name}>{template.name}</option>
-                    ))}
-                </select>
+                    options={templateOptions}
+                    onChange={template => onChange({template})}
+                />
             </label>
             <div className={styles.numberGrid}>
                 <NumberField label={t("matchmaking.max_servers")} value={configuration.max_amount_of_servers} min={1} onChange={value => onChange({max_amount_of_servers: value})}/>
@@ -225,11 +243,11 @@ function ConfigurationForm({
                 <input type="checkbox" checked={configuration.can_rejoin} onChange={event => onChange({can_rejoin: event.target.checked})}/>
                 <span>{t("matchmaking.can_rejoin")}</span>
             </label>
-            <label className={styles.check}>
+            <label className={`${styles.check} same_queue`}>
                 <input type="checkbox" checked={configuration.split_same_queue} onChange={event => onChange({split_same_queue: event.target.checked})}/>
                 <span>{t("matchmaking.split_same_queue")}</span>
             </label>
-            <label className={styles.check}>
+            <label id={"split"} className={`${styles.check} split`}>
                 <input type="checkbox" checked={configuration.single_queue_server_on_split} onChange={event => onChange({single_queue_server_on_split: event.target.checked})}/>
                 <span>{t("matchmaking.single_queue_server_on_split")}</span>
             </label>

@@ -11,7 +11,7 @@
     min-width: min(320px, calc(100vw - 32px));
     max-width: min(520px, calc(100vw - 32px));
     border: 1px solid color-mix(in srgb, currentColor, transparent 68%);
-    border-radius: 999px;
+    border-radius: 8px;
     background: color-mix(in srgb, #111827, black 20%);
     box-shadow: 0 14px 34px rgb(0 0 0 / 38%);
     color: white;
@@ -19,6 +19,15 @@
     font-weight: 700;
     text-align: center;
     animation: slideUp 180ms ease-out;
+}
+
+.success {
+    border-color: color-mix(in srgb, #22c55e, white 18%);
+}
+
+.error {
+    border-color: color-mix(in srgb, #ef4444, white 18%);
+    background: color-mix(in srgb, #451a1a, black 12%);
 }
 
 @keyframes slideUp {

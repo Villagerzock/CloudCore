@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface MaintenancePlayerRepo extends JpaRepository<MaintenancePlayer, UUID> {
+    boolean existsByUsernameIgnoreCase(String username);
 }

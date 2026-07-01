@@ -19,7 +19,9 @@ export type NodePermissionName =
     | "TEMPLATES_CREATE"
     | "USERS_ADD"
     | "ROLES_ADD"
-    | "ROLES_MOVE";
+    | "ROLES_MOVE"
+    | "BANNED_PLAYERS_ADD"
+    | "BANNED_PLAYERS_EDIT";
 
 export function useNodePermissions() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);

@@ -234,7 +234,8 @@ try = [
         ProxyServerManager.getInstance().configure(new ConfigDto(
                 lobbyConfig.getServer(),
                 matchmakingConfigurations(),
-                Config.getInstance().getProxy().getMaintenanceMotd()
+                Config.getInstance().getProxy().getMaintenanceMotd(),
+                Config.getInstance().getProxy().getBanMessage()
         ));
     }
 

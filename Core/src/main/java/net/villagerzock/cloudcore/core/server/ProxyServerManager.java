@@ -1,10 +1,13 @@
 package net.villagerzock.cloudcore.core.server;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.villagerzock.cloudcore.core.server.dto.CallbackDto;
 import net.villagerzock.cloudcore.core.server.dto.ConfigDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerCreationDto;
 import net.villagerzock.cloudcore.core.server.dto.ServerShutdownDto;
+import net.villagerzock.corehandshake.dto.ResolvedBanRequest;
+import net.villagerzock.corehandshake.dto.UpdateBannedPlayerRequest;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -16,13 +19,17 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 import java.time.Duration;
+import java.time.Instant;
 
 public class ProxyServerManager {
     private static final ProxyServerManager INSTANCE = new ProxyServerManager();
     private String host;
     private int port;
 
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(Instant.class, (com.google.gson.JsonSerializer<Instant>)
+                    (src, typeOfSrc, context) -> src == null ? null : context.serialize(src.toString()))
+            .create();
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))
             .build();
@@ -56,6 +63,10 @@ public class ProxyServerManager {
     }
 
     private void send(String method, String path, String body) {
+        sendForBody(method, path, body);
+    }
+
+    private String sendForBody(String method, String path, String body) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://" + host + ":" + port + path))
@@ -71,6 +82,7 @@ public class ProxyServerManager {
                         "Request failed: " + response.statusCode() + " - " + response.body()
                 );
             }
+            return response.body();
         } catch (Exception e) {
             throw new RuntimeException("Failed to contact Velocity API", e);
         }
@@ -174,5 +186,21 @@ public class ProxyServerManager {
 
     public void removePlayer(UUID player) {
         send("DELETE", "/api/maintenance?playerUUID=" + player, "");
+    }
+
+    public String getBans() {
+        return get("/api/bans");
+    }
+
+    public String createBan(ResolvedBanRequest request) {
+        return sendForBody("POST", "/api/bans", GSON.toJson(request));
+    }
+
+    public String updateBan(UUID uuid, UpdateBannedPlayerRequest request) {
+        return sendForBody("PATCH", "/api/bans/" + uuid, GSON.toJson(request));
+    }
+
+    public void deleteBan(UUID uuid) {
+        send("DELETE", "/api/bans/" + uuid, "");
     }
 }

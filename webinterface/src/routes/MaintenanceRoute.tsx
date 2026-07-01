@@ -10,9 +10,12 @@ import type {FormEvent} from "react";
 import Button from "../components/Button.tsx";
 import {useI18n} from "../lib/i18n.ts";
 import styles from "./MaintenanceRoute.module.css";
+import {useToast} from "../components/ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
 
 function MaintenanceRoute() {
     const {t} = useI18n();
+    const {showError, showToast} = useToast();
     const [status, setStatus] = useState<MaintenanceStatus | null>(null);
     const [saving, setSaving] = useState(false);
     const [player, setPlayer] = useState("");
@@ -21,8 +24,12 @@ function MaintenanceRoute() {
     useEffect(() => {
         getMaintenanceStatus()
             .then(setStatus)
-            .catch(reason => setError(reason instanceof Error ? reason.message : t("error.load_failed")));
-    }, []);
+            .catch(reason => {
+                const message = errorMessage(reason, t("error.load_failed"));
+                setError(message);
+                showError(message);
+            });
+    }, [showError, t]);
 
     async function toggle() {
         if (!status || saving) return;
@@ -31,8 +38,11 @@ function MaintenanceRoute() {
             setSaving(true);
             setError(null);
             setStatus(await setMaintenanceActive(!status.active));
+            showToast(t("state.saving"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.save_failed"));
+            const message = errorMessage(reason, t("error.save_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(false);
         }
@@ -47,8 +57,11 @@ function MaintenanceRoute() {
             setError(null);
             setStatus(await addMaintenancePlayer(player));
             setPlayer("");
+            showToast(t("action.add"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.save_failed"));
+            const message = errorMessage(reason, t("error.save_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(false);
         }
@@ -59,8 +72,11 @@ function MaintenanceRoute() {
             setSaving(true);
             setError(null);
             setStatus(await removeMaintenancePlayer(uuid));
+            showToast(t("action.delete"));
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : t("error.delete_failed"));
+            const message = errorMessage(reason, t("error.delete_failed"));
+            setError(message);
+            showError(message);
         } finally {
             setSaving(false);
         }

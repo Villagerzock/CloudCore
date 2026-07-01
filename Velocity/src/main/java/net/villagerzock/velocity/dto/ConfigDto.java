@@ -7,6 +7,7 @@ import java.util.Map;
 public record ConfigDto(
         String lobbyServer,
         Map<String, CloudCoreConfiguration.ServerConfig> matchmakingServerConfigs,
-        String maintenanceMotd
+        String maintenanceMotd,
+        String banMessage
 ) {
 }

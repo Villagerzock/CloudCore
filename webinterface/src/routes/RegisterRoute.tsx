@@ -5,9 +5,12 @@ import {useState} from "react";
 import {register} from "../lib/api.ts";
 import Button from "../components/Button.tsx";
 import {useI18n} from "../lib/i18n.ts";
+import {useToast} from "../components/ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
 
 function RegisterRoute(){
     const {t} = useI18n();
+    const {showError} = useToast();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -24,7 +27,7 @@ function RegisterRoute(){
             localStorage.setItem("auth_username", body.username);
             window.location.assign("/");
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Registration failed");
+            showError(errorMessage(error, "Registration failed"));
         } finally {
             if (submitButton) submitButton.disabled = false;
         }

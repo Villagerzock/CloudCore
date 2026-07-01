@@ -5,9 +5,12 @@ import * as React from "react";
 import {login} from "../lib/api.ts";
 import Button from "../components/Button.tsx";
 import {useI18n} from "../lib/i18n.ts";
+import {useToast} from "../components/ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
 
 function LoginRoute(){
     const {t} = useI18n();
+    const {showError} = useToast();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
@@ -23,7 +26,7 @@ function LoginRoute(){
             localStorage.setItem("auth_username", body.username);
             window.location.assign("/");
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Login failed");
+            showError(errorMessage(error, "Login failed"));
         } finally {
             if (submitButton) submitButton.disabled = false;
         }

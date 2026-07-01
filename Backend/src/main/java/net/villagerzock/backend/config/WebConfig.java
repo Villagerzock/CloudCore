@@ -27,6 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/roles/**",
                         "/api/matchmaking/**",
                         "/api/maintenance/**",
+                        "/api/bans/**",
                         "/api/metadata/**",
                         "/api/console/**");
     }

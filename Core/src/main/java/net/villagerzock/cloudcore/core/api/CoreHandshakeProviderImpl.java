@@ -1,6 +1,7 @@
 package net.villagerzock.cloudcore.core.api;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 import net.villagerzock.cloudcore.core.config.Config;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.net.URI;
@@ -40,7 +42,12 @@ import java.util.zip.ZipOutputStream;
 import java.util.regex.Pattern;
 
 public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(Instant.class, (com.google.gson.JsonSerializer<Instant>)
+                    (src, typeOfSrc, context) -> src == null ? null : context.serialize(src.toString()))
+            .registerTypeAdapter(Instant.class, (com.google.gson.JsonDeserializer<Instant>)
+                    (json, typeOfT, context) -> json == null || json.isJsonNull() ? null : Instant.parse(json.getAsString()))
+            .create();
     private static final long MAX_INLINE_FILE_BYTES = 256L * 1024L;
     private static final Pattern MC_NAME = Pattern.compile("^[A-Za-z0-9_]{3,16}$");
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -242,6 +249,39 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
     public MaintenanceStatus removeMaintenancePlayer(String uuid) {
         ProxyServerManager.getInstance().removePlayer(UUID.fromString(requireValue(uuid, "uuid")));
         return getMaintenanceStatus();
+    }
+
+    @Override
+    public List<BannedPlayer> getBannedPlayers() {
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().getBans(),
+                new TypeToken<List<BannedPlayer>>() {}.getType());
+    }
+
+    @Override
+    public BannedPlayer createBan(CreateBannedPlayerRequest request) {
+        ResolvedMaintenancePlayer player = resolveMaintenancePlayer(request.player());
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().createBan(new ResolvedBanRequest(
+                        player.uuid(),
+                        player.username(),
+                        requireValue(request.reason(), "reason"),
+                        request.expiresAt())),
+                BannedPlayer.class);
+    }
+
+    @Override
+    public BannedPlayer updateBan(String uuid, UpdateBannedPlayerRequest request) {
+        return GSON.fromJson(
+                ProxyServerManager.getInstance().updateBan(
+                        UUID.fromString(requireValue(uuid, "uuid")),
+                        request),
+                BannedPlayer.class);
+    }
+
+    @Override
+    public void deleteBan(String uuid) {
+        ProxyServerManager.getInstance().deleteBan(UUID.fromString(requireValue(uuid, "uuid")));
     }
 
     @Override
@@ -619,7 +659,8 @@ public class CoreHandshakeProviderImpl implements CoreHandshakeProvider {
             ProxyServerManager.getInstance().configure(new ConfigDto(
                     current.getLobby().getServer(),
                     proxyMatchmakingConfigurations(),
-                    current.getProxy().getMaintenanceMotd()));
+                    current.getProxy().getMaintenanceMotd(),
+                    current.getProxy().getBanMessage()));
         } catch (RuntimeException exception) {
             System.out.println("Failed to push matchmaking configuration to Velocity: " + exception.getMessage());
         }

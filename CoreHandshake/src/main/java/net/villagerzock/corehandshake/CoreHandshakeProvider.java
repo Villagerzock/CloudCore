@@ -2,6 +2,8 @@ package net.villagerzock.corehandshake;
 
 import net.villagerzock.corehandshake.dto.ChartPoint;
 import net.villagerzock.corehandshake.dto.AddMaintenancePlayerRequest;
+import net.villagerzock.corehandshake.dto.BannedPlayer;
+import net.villagerzock.corehandshake.dto.CreateBannedPlayerRequest;
 import net.villagerzock.corehandshake.dto.CreateTemplateRequest;
 import net.villagerzock.corehandshake.dto.FileDownload;
 import net.villagerzock.corehandshake.dto.FileSystemResponse;
@@ -12,6 +14,7 @@ import net.villagerzock.corehandshake.dto.NodeMetadata;
 import net.villagerzock.corehandshake.dto.SaveTemplateFileRequest;
 import net.villagerzock.corehandshake.dto.ServerInfo;
 import net.villagerzock.corehandshake.dto.ServerTemplate;
+import net.villagerzock.corehandshake.dto.UpdateBannedPlayerRequest;
 import net.villagerzock.corehandshake.dto.UploadTemplateFileRequest;
 
 import java.util.List;
@@ -54,6 +57,14 @@ public interface CoreHandshakeProvider {
     MaintenanceStatus addMaintenancePlayer(AddMaintenancePlayerRequest request);
 
     MaintenanceStatus removeMaintenancePlayer(String uuid);
+
+    List<BannedPlayer> getBannedPlayers();
+
+    BannedPlayer createBan(CreateBannedPlayerRequest request);
+
+    BannedPlayer updateBan(String uuid, UpdateBannedPlayerRequest request);
+
+    void deleteBan(String uuid);
 
     FileSystemResponse getTemplateFileSystemPath(String template, String path);
 

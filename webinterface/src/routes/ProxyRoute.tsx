@@ -6,11 +6,14 @@ import {useI18n} from "../lib/i18n.ts";
 import Button from "../components/Button.tsx";
 import {restartProxy, startProxy, stopProxy} from "../lib/api.ts";
 import {useState} from "react";
+import {useToast} from "../components/ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
 
 
 function ProxyRoute(){
     const { playerCountData, networkData, error } = useProxyMetrics("minutes", "minutes");
     const {t} = useI18n();
+    const {showError, showToast} = useToast();
     const [actionError, setActionError] = useState<string | null>(null);
     const [action, setAction] = useState<string | null>(null);
 
@@ -19,8 +22,11 @@ function ProxyRoute(){
             setAction(name);
             setActionError(null);
             await operation();
+            showToast(`${name} ausgeführt`);
         } catch (reason) {
-            setActionError(reason instanceof Error ? reason.message : "Aktion fehlgeschlagen");
+            const message = errorMessage(reason, "Aktion fehlgeschlagen");
+            setActionError(message);
+            showError(message);
         } finally {
             setAction(null);
         }

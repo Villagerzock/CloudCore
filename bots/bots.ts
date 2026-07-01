@@ -27,19 +27,76 @@ async function pingServer(): Promise<void> {
 }
 
 function formatMotd(description: unknown): string {
-    if (typeof description === "string") {
-        return legacyToAnsi(description);
+    return formatMinecraftText(description);
+}
+
+function formatMinecraftText(value: unknown): string {
+    const unwrapped = unwrapNbt(value);
+
+    if (typeof unwrapped === "string") {
+        return legacyToAnsi(unwrapped);
     }
 
-    if (typeof description === "object" && description !== null) {
-        return componentToAnsi(description as MinecraftTextComponent);
+    if (typeof unwrapped === "object" && unwrapped !== null) {
+        return componentToAnsi(unwrapped as MinecraftTextComponent);
     }
 
-    return String(description);
+    return String(unwrapped);
+}
+
+function unwrapNbt(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(unwrapNbt);
+    }
+
+    if (typeof value !== "object" || value === null) {
+        return value;
+    }
+
+    const obj = value as Record<string, unknown>;
+
+    if ("type" in obj && "value" in obj) {
+        return unwrapNbt(obj.value);
+    }
+
+    const out: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(obj)) {
+        if (key === "") {
+            out.text = String(unwrapNbt(val));
+        } else {
+            out[key] = unwrapNbt(val);
+        }
+    }
+
+    return out;
+}
+
+function parseJsonTextIfPossible(text: string): string {
+    try {
+        const parsed = JSON.parse(text);
+
+        if (typeof parsed === "string") {
+            return legacyToAnsi(parsed);
+        }
+
+        if (typeof parsed === "object" && parsed !== null) {
+            return componentToAnsi(parsed as MinecraftTextComponent);
+        }
+    } catch {
+        // Not JSON, use as legacy text
+    }
+
+    return legacyToAnsi(text);
+}
+
+function stripAnsi(text: string): string {
+    return text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
 }
 
 type MinecraftTextComponent = {
     text?: string;
+    translate?: string;
     color?: string;
     bold?: boolean;
     italic?: boolean;
@@ -47,13 +104,27 @@ type MinecraftTextComponent = {
     strikethrough?: boolean;
     obfuscated?: boolean;
     extra?: MinecraftTextComponent[];
+    with?: MinecraftTextComponent[];
 };
 
 function componentToAnsi(component: MinecraftTextComponent): string {
     let out = "";
 
     out += styleToAnsi(component);
-    out += legacyToAnsi(component.text ?? "");
+
+    if (component.text) {
+        out += legacyToAnsi(component.text);
+    }
+
+    if (component.translate) {
+        out += legacyToAnsi(component.translate);
+    }
+
+    if (component.with) {
+        for (const child of component.with) {
+            out += componentToAnsi(child);
+        }
+    }
 
     if (component.extra) {
         for (const child of component.extra) {
@@ -190,9 +261,15 @@ async function spawnBot(i: number): Promise<void> {
             finish();
         });
 
-        bot.once("kicked", reason => {
-            console.log(`${username} kicked:`, reason);
-            finish(new Error(`Kicked: ${reason}`));
+        bot.once("kicked", (reason, loggedIn) => {
+            const formattedReason = formatMinecraftText(reason);
+            const plainReason = stripAnsi(formattedReason).trim();
+
+            console.log(`${username} kicked:`);
+            console.log(formattedReason || JSON.stringify(reason, null, 2));
+            console.log("loggedIn:", loggedIn);
+
+            finish();
         });
 
         bot.once("error", error => {

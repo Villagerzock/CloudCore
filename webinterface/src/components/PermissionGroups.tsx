@@ -31,6 +31,10 @@ const permissionCategories: Record<string, string[]> = {
         "USERS_ADD",
         "ROLES_ADD",
         "ROLES_MOVE"
+    ],
+    "category.permission.bans": [
+        "BANNED_PLAYERS_ADD",
+        "BANNED_PLAYERS_EDIT"
     ]
 };
 

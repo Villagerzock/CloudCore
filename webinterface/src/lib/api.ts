@@ -147,6 +147,24 @@ export type MaintenanceStatus = {
     }>;
 }
 
+export type BannedPlayer = {
+    uuid: string;
+    name: string | null;
+    reason: string;
+    bannedAt: string;
+    expiresAt: string | null;
+}
+
+export type Account = {
+    id: number;
+    username: string;
+    email: string;
+    sshKeys: Array<{
+        id: number;
+        key: string;
+    }>;
+}
+
 export type AuthResponse = {
     token: string;
     expiresAt: string;
@@ -270,16 +288,17 @@ async function getJson<T>(path: string, includeSelectedNode = true): Promise<T> 
     }
 
     if (!response.ok) {
-        throw new Error(`API request failed (${response.status} ${response.statusText})`);
+        throw new Error(await getErrorMessage(response, `API request failed (${response.status} ${response.statusText})`));
     }
 
     return response.json() as Promise<T>;
 }
 
-async function postJson<T>(path: string, body: object): Promise<T> {
+async function postJson<T>(path: string, body: object, includeSelectedNode = true): Promise<T> {
     const token = getAuthTokenOrRedirect<T>();
     if (typeof token !== "string") return token;
-    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+    const requestPath = includeSelectedNode ? appendSelectedNode(path) : path;
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -322,10 +341,11 @@ async function postNoContent(path: string): Promise<void> {
     }
 }
 
-async function patchJson<T>(path: string, body: object): Promise<T> {
+async function patchJson<T>(path: string, body: object, includeSelectedNode = true): Promise<T> {
     const token = getAuthTokenOrRedirect<T>();
     if (typeof token !== "string") return token;
-    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+    const requestPath = includeSelectedNode ? appendSelectedNode(path) : path;
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -347,10 +367,11 @@ async function patchJson<T>(path: string, body: object): Promise<T> {
     return response.json() as Promise<T>;
 }
 
-async function deleteRequest(path: string): Promise<void> {
+async function deleteRequest(path: string, includeSelectedNode = true): Promise<void> {
     const token = getAuthTokenOrRedirect<void>();
     if (typeof token !== "string") return token;
-    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+    const requestPath = includeSelectedNode ? appendSelectedNode(path) : path;
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
         method: "DELETE",
         headers: {
             Accept: "application/json",
@@ -368,10 +389,11 @@ async function deleteRequest(path: string): Promise<void> {
     }
 }
 
-async function deleteJson<T>(path: string): Promise<T> {
+async function deleteJson<T>(path: string, includeSelectedNode = true): Promise<T> {
     const token = getAuthTokenOrRedirect<T>();
     if (typeof token !== "string") return token;
-    const response = await fetch(`${API_BASE_URL}${appendSelectedNode(path)}`, {
+    const requestPath = includeSelectedNode ? appendSelectedNode(path) : path;
+    const response = await fetch(`${API_BASE_URL}${requestPath}`, {
         method: "DELETE",
         headers: {
             Accept: "application/json",
@@ -393,6 +415,36 @@ async function deleteJson<T>(path: string): Promise<T> {
 
 export function getNodes(): Promise<Node[]> {
     return getJson("/nodes", false);
+}
+
+export function getAccount(): Promise<Account> {
+    return getJson("/account", false);
+}
+
+export function updateAccountProfile(username: string, email: string): Promise<Account> {
+    return patchJson("/account", {
+        username: username.trim(),
+        email: email.trim()
+    }, false);
+}
+
+export function updateAccountPassword(currentPassword: string, newPassword: string): Promise<Account> {
+    return patchJson("/account/password", {
+        currentPassword,
+        newPassword
+    }, false);
+}
+
+export function addSshKey(key: string): Promise<Account> {
+    return postJson("/account/ssh-keys", {key: key.trim()}, false);
+}
+
+export function updateSshKey(keyId: number, key: string): Promise<Account> {
+    return patchJson(`/account/ssh-keys/${keyId}`, {key: key.trim()}, false);
+}
+
+export function deleteSshKey(keyId: number): Promise<Account> {
+    return deleteJson(`/account/ssh-keys/${keyId}`, false);
 }
 
 export function getProxyPlayerCountData(range: PlayerMetricRange): Promise<PlayerCountData[]> {
@@ -489,6 +541,29 @@ export function addMaintenancePlayer(player: string): Promise<MaintenanceStatus>
 
 export function removeMaintenancePlayer(uuid: string): Promise<MaintenanceStatus> {
     return deleteJson(`/maintenance/players/${encodeURIComponent(uuid)}`);
+}
+
+export function getBannedPlayers(): Promise<BannedPlayer[]> {
+    return getJson("/bans");
+}
+
+export function createBan(player: string, reason: string, expiresAt: string | null): Promise<BannedPlayer> {
+    return postJson("/bans", {
+        player: player.trim(),
+        reason: reason.trim(),
+        expiresAt
+    });
+}
+
+export function updateBan(uuid: string, reason: string, expiresAt: string | null): Promise<BannedPlayer> {
+    return patchJson(`/bans/${encodeURIComponent(uuid)}`, {
+        reason: reason.trim(),
+        expiresAt
+    });
+}
+
+export function deleteBan(uuid: string): Promise<void> {
+    return deleteRequest(`/bans/${encodeURIComponent(uuid)}`);
 }
 
 export function getServerTemplates(): Promise<ServerTemplate[]> {

@@ -29,6 +29,9 @@ public class ConfigController {
         if (configDto.maintenanceMotd() != null) {
             cloudCoreConfiguration.setMaintenanceMotd(configDto.maintenanceMotd());
         }
+        if (configDto.banMessage() != null) {
+            cloudCoreConfiguration.setBanMessage(configDto.banMessage());
+        }
 
         return ResponseEntity.ok("Configured");
     }

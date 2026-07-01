@@ -14,8 +14,8 @@ function ServerCard({ name, template, online, max }: Server){
     return (
         <div className={styles.card} onClick={navigate}>
             <h3>{name}</h3>
-            <span>{t("field.template")}: {template}</span><br/>
-            <span>{t("metrics.online")}: {online}/{max}</span><br/>
+            <p>{t("field.template")}: {template}</p>
+            <p>{t("metrics.online")}: {online}/{max}</p>
         </div>
     )
 }

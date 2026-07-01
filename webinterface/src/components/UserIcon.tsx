@@ -2,12 +2,16 @@ import styles from "./UserIcon.module.css";
 import {FaUser} from "react-icons/fa";
 import {useEffect, useRef, useState} from "react";
 import Button from "./Button.tsx";
-import {logout} from "../lib/api.ts";
+import {logout, usePersistentNavigate} from "../lib/api.ts";
 import {useI18n} from "../lib/i18n.ts";
+import {useToast} from "./ToastProvider.tsx";
+import {errorMessage} from "../lib/errors.ts";
 
 
 function UserIcon(){
     const {t} = useI18n();
+    const {showError} = useToast();
+    const navigate = usePersistentNavigate();
     const [open, setOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,7 +32,7 @@ function UserIcon(){
         try {
             await logout();
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Logout failed");
+            showError(errorMessage(error, "Logout failed"));
         } finally {
             window.location.assign("/login");
         }
@@ -39,7 +43,10 @@ function UserIcon(){
             <div ref={menuRef} className={styles.menu}>
                 {open && (
                     <div className={styles.popup}>
-                        <Button type={"clear"} onClick={()=>{}}>
+                        <Button type={"clear"} onClick={() => {
+                            setOpen(false);
+                            navigate("/account");
+                        }}>
                             {t("account.my_account")}
                         </Button>
                         <hr/>

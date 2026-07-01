@@ -80,7 +80,8 @@ public class MaintenanceService {
     }
 
     public boolean hasPlayer(Player player){
-        return maintenancePlayerRepo.existsById(player.getUniqueId());
+        return maintenancePlayerRepo.existsById(player.getUniqueId())
+                || maintenancePlayerRepo.existsByUsernameIgnoreCase(player.getUsername());
     }
 
     private String normalizeUsername(String username) {

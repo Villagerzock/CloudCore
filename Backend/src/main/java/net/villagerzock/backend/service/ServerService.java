@@ -2,6 +2,8 @@ package net.villagerzock.backend.service;
 
 import net.villagerzock.backend.dto.FileSystemResponse;
 import net.villagerzock.backend.dto.AddMaintenancePlayerRequest;
+import net.villagerzock.backend.dto.BannedPlayerDto;
+import net.villagerzock.backend.dto.CreateBannedPlayerRequest;
 import net.villagerzock.backend.dto.CreateTemplateRequest;
 import net.villagerzock.backend.dto.SaveTemplateFileRequest;
 import net.villagerzock.backend.dto.ServerDto;
@@ -11,6 +13,7 @@ import net.villagerzock.backend.dto.LaunchServerRequest;
 import net.villagerzock.backend.dto.LaunchServerResponse;
 import net.villagerzock.backend.dto.MatchmakingConfigurationDto;
 import net.villagerzock.backend.dto.MaintenanceStatusDto;
+import net.villagerzock.backend.dto.UpdateBannedPlayerRequest;
 import net.villagerzock.backend.dto.UploadTemplateFileRequest;
 import net.villagerzock.backend.entity.Username;
 import net.villagerzock.backend.repository.UsernameRepository;
@@ -126,6 +129,38 @@ public class ServerService {
 
     public MaintenanceStatusDto removeMaintenancePlayer(long nodeId, String uuid) {
         return withMaintenancePlayerNames(handshakeClient.removeMaintenancePlayer(nodeId, uuid));
+    }
+
+    public List<BannedPlayerDto> getBannedPlayers(long nodeId) {
+        return withBannedPlayerNames(handshakeClient.getBannedPlayers(nodeId));
+    }
+
+    public BannedPlayerDto createBan(long nodeId, CreateBannedPlayerRequest request) {
+        return withBannedPlayerName(handshakeClient.createBan(nodeId, request));
+    }
+
+    public BannedPlayerDto updateBan(long nodeId, String uuid, UpdateBannedPlayerRequest request) {
+        return withBannedPlayerName(handshakeClient.updateBan(nodeId, uuid, request));
+    }
+
+    public void deleteBan(long nodeId, String uuid) {
+        handshakeClient.deleteBan(nodeId, uuid);
+    }
+
+    private List<BannedPlayerDto> withBannedPlayerNames(List<BannedPlayerDto> bans) {
+        return bans.stream().map(this::withBannedPlayerName).toList();
+    }
+
+    private BannedPlayerDto withBannedPlayerName(BannedPlayerDto ban) {
+        if (ban.name() != null) {
+            return ban;
+        }
+        return new BannedPlayerDto(
+                ban.uuid(),
+                getUsernameFromUuid(ban.uuid()).orElse(null),
+                ban.reason(),
+                ban.bannedAt(),
+                ban.expiresAt());
     }
 
     public FileSystemResponse getTemplateFileSystemPath(long nodeId, String template, String path) {

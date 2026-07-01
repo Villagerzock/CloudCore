@@ -39,4 +39,14 @@ public class CloudCoreConfiguration {
     @Getter
     @Setter
     private String maintenanceMotd;
+
+    @Getter
+    @Setter
+    private String banMessage = """
+            <red>You are banned from this network.</red>
+            <gray>Player:</gray> <white>%name%</white>
+            <gray>Reason:</gray> <white>%reason%</white>
+            <gray>Release:</gray> <white>%release_date%</white>
+            <gray>Time left:</gray> <white>%time_left%</white>
+            """;
 }

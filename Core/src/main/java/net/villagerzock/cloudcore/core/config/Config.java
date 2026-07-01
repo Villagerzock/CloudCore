@@ -74,6 +74,15 @@ public class Config {
         public String motd = "<#09add3>A Velocity Server";
         @Getter
         public String maintenanceMotd = "<red>This Server is under Maintenance!";
+        @Getter
+        public String banMessage = """
+                <gray>======================================</gray>
+                <green>%name%</green> <yellow>has been banned.</yello>
+                <red>Reason:</red <yellow>%reason%</yellow>
+                <blue>Unbanned on:</blue> <yellow>%release_date%</yellow>
+                <dark_purple>Time left:</dark_purple> <yellow>%time_left%</yellow>
+                <gray>======================================</gray>
+                """;
     }
 
     public static class LobbyConfig {

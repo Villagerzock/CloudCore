@@ -1,14 +1,38 @@
 .card {
-    background-color: var(--accent-bg);
-    border-color: var(--accent-border);
-    border-radius: 8px;
-    border-width: 1px;
-    border-style: solid;
+    width: min(100%, 50em);
+    min-height: 6em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
     padding: 16px;
-    width: fit-content;
+    box-sizing: border-box;
+    text-align: left;
+    background-color: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
-.card:hover{
-    background-color: color-mix(in srgb, var(--accent-bg),var(--accent-border) 25%);
+.card:hover {
+    background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 20%);
+    border-color: color-mix(in srgb, var(--accent), white 10%);
     cursor: pointer;
+    transform: translateY(-1px);
+}
+
+.card h3,
+.card p {
+    margin: 0;
+}
+
+.card h3 {
+    color: var(--text-h);
+    font-size: 1.15rem;
+}
+
+.card p {
+    overflow-wrap: anywhere;
+    opacity: 0.86;
 }

@@ -2,8 +2,10 @@ package net.villagerzock.corehandshake;
 
 import jakarta.validation.Valid;
 import net.villagerzock.corehandshake.dto.AddMaintenancePlayerRequest;
+import net.villagerzock.corehandshake.dto.BannedPlayer;
 import net.villagerzock.corehandshake.dto.ChartPoint;
 import net.villagerzock.corehandshake.dto.CommandRequest;
+import net.villagerzock.corehandshake.dto.CreateBannedPlayerRequest;
 import net.villagerzock.corehandshake.dto.CreateTemplateRequest;
 import net.villagerzock.corehandshake.dto.FileDownload;
 import net.villagerzock.corehandshake.dto.FileSystemResponse;
@@ -17,6 +19,7 @@ import net.villagerzock.corehandshake.dto.SaveTemplateFileRequest;
 import net.villagerzock.corehandshake.dto.ServerInfo;
 import net.villagerzock.corehandshake.dto.ServerTemplate;
 import net.villagerzock.corehandshake.dto.TemplatePathRequest;
+import net.villagerzock.corehandshake.dto.UpdateBannedPlayerRequest;
 import net.villagerzock.corehandshake.dto.UploadTemplateFileRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
@@ -166,6 +169,49 @@ public class CoreHandshakeController {
     public MaintenanceStatus removeMaintenancePlayer(@PathVariable String uuid) {
         try {
             return provider.removeMaintenancePlayer(uuid);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
+    }
+
+    @GetMapping("/bans")
+    public List<BannedPlayer> getBannedPlayers() {
+        return provider.getBannedPlayers();
+    }
+
+    @PostMapping("/bans")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BannedPlayer createBan(@Valid @RequestBody CreateBannedPlayerRequest request) {
+        try {
+            return provider.createBan(request);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        } catch (NoSuchElementException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
+        }
+    }
+
+    @PatchMapping("/bans/{uuid}")
+    public BannedPlayer updateBan(
+            @PathVariable String uuid,
+            @Valid @RequestBody UpdateBannedPlayerRequest request
+    ) {
+        try {
+            return provider.updateBan(uuid, request);
+        } catch (NoSuchElementException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
+    }
+
+    @DeleteMapping("/bans/{uuid}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBan(@PathVariable String uuid) {
+        try {
+            provider.deleteBan(uuid);
+        } catch (NoSuchElementException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }

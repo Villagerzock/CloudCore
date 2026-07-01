@@ -5,21 +5,44 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class VersionHelper {
     public static Map<String, Map<String, String>> loadServerVersionMap() {
+        AtomicReference<HttpResponse<String>> lastResponse = new AtomicReference<>();
+
         try {
             System.out.println("Loading server versions from PaperMC, Fabric and Vanilla...");
 
             HttpClient client = HttpClient.newHttpClient();
             Gson gson = new Gson();
+
+            java.util.function.Function<String, String> request = url -> {
+                try {
+                    HttpResponse<String> response = client.send(
+                            HttpRequest.newBuilder()
+                                    .uri(URI.create(url))
+                                    .header("User-Agent", "CloudCore/1.0.0 (marvin.sieber@rsnweb.ch)")
+                                    .build(),
+                            HttpResponse.BodyHandlers.ofString()
+                    );
+
+                    lastResponse.set(response);
+                    return response.body();
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to request " + url, e);
+                }
+            };
 
             Map<String, Map<String, String>> result = new HashMap<>();
 
@@ -29,71 +52,72 @@ public class VersionHelper {
                 Map<String, String> versions = new HashMap<>();
 
                 JsonObject projectInfo = gson.fromJson(
-                        client.send(
-                                HttpRequest.newBuilder()
-                                        .uri(URI.create("https://api.papermc.io/v2/projects/" + project))
-                                        .build(),
-                                HttpResponse.BodyHandlers.ofString()
-                        ).body(),
+                        request.apply("https://fill.papermc.io/v3/projects/" + project),
                         JsonObject.class
                 );
 
-                for (JsonElement versionElement : projectInfo.getAsJsonArray("versions")) {
-                    String version = versionElement.getAsString();
+                JsonObject versionGroups = projectInfo.getAsJsonObject("versions");
 
-                    if (isSnapshotVersion(version)) {
-                        continue;
+                if (versionGroups == null) {
+                    continue;
+                }
+
+                for (Map.Entry<String, JsonElement> versionGroup : versionGroups.entrySet()) {
+                    JsonArray versionArray = versionGroup.getValue().getAsJsonArray();
+
+                    for (JsonElement versionElement : versionArray) {
+                        String version = versionElement.getAsString();
+
+                        if (isSnapshotVersion(version)) {
+                            continue;
+                        }
+
+                        JsonArray builds = gson.fromJson(
+                                request.apply(
+                                        "https://fill.papermc.io/v3/projects/"
+                                                + project
+                                                + "/versions/"
+                                                + version
+                                                + "/builds"
+                                ),
+                                JsonArray.class
+                        );
+
+                        if (builds == null || builds.isEmpty()) {
+                            continue;
+                        }
+
+                        String downloadUrl = null;
+
+                        for (JsonElement buildElement : builds) {
+                            JsonObject build = buildElement.getAsJsonObject();
+
+                            if (!build.has("channel") || !build.get("channel").getAsString().equalsIgnoreCase("STABLE")) {
+                                continue;
+                            }
+
+                            JsonObject downloads = build.getAsJsonObject("downloads");
+
+                            if (downloads == null || !downloads.has("server:default")) {
+                                continue;
+                            }
+
+                            JsonObject serverDefault = downloads.getAsJsonObject("server:default");
+
+                            if (serverDefault == null || !serverDefault.has("url")) {
+                                continue;
+                            }
+
+                            downloadUrl = serverDefault.get("url").getAsString();
+                            break;
+                        }
+
+                        if (downloadUrl == null) {
+                            continue;
+                        }
+
+                        versions.put(version, downloadUrl);
                     }
-
-                    JsonObject builds = gson.fromJson(
-                            client.send(
-                                    HttpRequest.newBuilder()
-                                            .uri(URI.create(
-                                                    "https://api.papermc.io/v2/projects/"
-                                                            + project
-                                                            + "/versions/"
-                                                            + version
-                                                            + "/builds"
-                                            ))
-                                            .build(),
-                                    HttpResponse.BodyHandlers.ofString()
-                            ).body(),
-                            JsonObject.class
-                    );
-
-                    if (!builds.has("builds")) {
-                        continue;
-                    }
-
-                    JsonArray buildArray = builds.getAsJsonArray("builds");
-
-                    if (buildArray == null || buildArray.isEmpty()) {
-                        continue;
-                    }
-
-                    JsonObject latestBuild = buildArray
-                            .get(buildArray.size() - 1)
-                            .getAsJsonObject();
-
-                    int build = latestBuild.get("build").getAsInt();
-
-                    String file = latestBuild
-                            .getAsJsonObject("downloads")
-                            .getAsJsonObject("application")
-                            .get("name")
-                            .getAsString();
-
-                    versions.put(
-                            version,
-                            "https://api.papermc.io/v2/projects/"
-                                    + project
-                                    + "/versions/"
-                                    + version
-                                    + "/builds/"
-                                    + build
-                                    + "/downloads/"
-                                    + file
-                    );
                 }
 
                 result.put(project, sortVersionsDescending(versions));
@@ -104,12 +128,7 @@ public class VersionHelper {
             Map<String, String> fabricVersions = new HashMap<>();
 
             JsonArray loaders = gson.fromJson(
-                    client.send(
-                            HttpRequest.newBuilder()
-                                    .uri(URI.create("https://meta.fabricmc.net/v2/versions/loader"))
-                                    .build(),
-                            HttpResponse.BodyHandlers.ofString()
-                    ).body(),
+                    request.apply("https://meta.fabricmc.net/v2/versions/loader"),
                     JsonArray.class
             );
 
@@ -120,12 +139,7 @@ public class VersionHelper {
                     .getAsString();
 
             JsonArray gameVersions = gson.fromJson(
-                    client.send(
-                            HttpRequest.newBuilder()
-                                    .uri(URI.create("https://meta.fabricmc.net/v2/versions/game"))
-                                    .build(),
-                            HttpResponse.BodyHandlers.ofString()
-                    ).body(),
+                    request.apply("https://meta.fabricmc.net/v2/versions/game"),
                     JsonArray.class
             );
 
@@ -159,12 +173,7 @@ public class VersionHelper {
             Map<String, String> vanillaVersions = new HashMap<>();
 
             JsonObject vanillaManifest = gson.fromJson(
-                    client.send(
-                            HttpRequest.newBuilder()
-                                    .uri(URI.create("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
-                                    .build(),
-                            HttpResponse.BodyHandlers.ofString()
-                    ).body(),
+                    request.apply("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"),
                     JsonObject.class
             );
 
@@ -182,12 +191,7 @@ public class VersionHelper {
                 }
 
                 JsonObject versionJson = gson.fromJson(
-                        client.send(
-                                HttpRequest.newBuilder()
-                                        .uri(URI.create(versionInfo.get("url").getAsString()))
-                                        .build(),
-                                HttpResponse.BodyHandlers.ofString()
-                        ).body(),
+                        request.apply(versionInfo.get("url").getAsString()),
                         JsonObject.class
                 );
 
@@ -214,6 +218,24 @@ public class VersionHelper {
             System.out.println("Loaded server versions.");
             return result;
         } catch (Exception e) {
+            HttpResponse<String> response = lastResponse.get();
+
+            if (response != null) {
+                try {
+                    Path file = Files.createTempFile("cloudcore-response-", ".txt");
+                    Files.writeString(file, response.body());
+
+                    throw new RuntimeException(
+                            "Failed to generate server version map\n"
+                                    + "Server Response has been stored in: "
+                                    + file.toAbsolutePath(),
+                            e
+                    );
+                } catch (IOException ignored) {
+                    // Falls selbst das Speichern fehlschlägt
+                }
+            }
+
             throw new RuntimeException("Failed to generate server version map", e);
         }
     }

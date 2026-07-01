@@ -1,0 +1,150 @@
+.scrollContainer {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 32px;
+    box-sizing: border-box;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 6px;
+    align-items: center;
+}
+
+.listHeader {
+    width: min(100%, 50em);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.listHeader h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.error,
+.empty {
+    width: min(100%, 50em);
+    margin: 12px auto 0;
+}
+
+.error {
+    color: #ffb4b4;
+}
+
+.itemShell {
+    width: min(100%, 50em);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.card {
+    width: 100%;
+    min-height: 6em;
+    border-radius: 8px;
+    border: 1px solid var(--accent-border);
+    background-color: var(--accent-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.card:hover {
+    cursor: pointer;
+    background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 20%);
+}
+
+.card h2,
+.card p {
+    margin: 0;
+}
+
+.card p {
+    overflow-wrap: anywhere;
+}
+
+.expanded {
+    border-color: color-mix(in srgb, var(--accent), white 10%);
+    background-color: color-mix(in srgb, var(--accent-bg), var(--accent) 14%);
+}
+
+.readonly:hover {
+    cursor: default;
+    background-color: var(--accent-bg);
+}
+
+.addForm {
+    width: min(100%, 50em);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(130px, 180px) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 82%);
+    box-sizing: border-box;
+}
+
+.editForm {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 180px) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--accent), transparent 70%);
+    border-radius: 8px;
+    background: color-mix(in srgb, black, transparent 82%);
+    box-sizing: border-box;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.field input {
+    min-height: 36px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, currentColor, transparent 65%);
+    background: color-mix(in srgb, black, transparent 74%);
+    color: inherit;
+    padding: 0 10px;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+@media (max-width: 840px) {
+    .addForm,
+    .editForm {
+        grid-template-columns: 1fr;
+    }
+
+    .formActions {
+        justify-content: stretch;
+    }
+
+    .formActions > * {
+        flex: 1;
+    }
+}

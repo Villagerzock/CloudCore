@@ -19,6 +19,8 @@ import ToastProvider from "./components/ToastProvider.tsx";
 import TemplateRoute from "./routes/TemplateRoute.tsx";
 import MatchmakingRoute from "./routes/MatchmakingRoute.tsx";
 import MaintenanceRoute from "./routes/MaintenanceRoute.tsx";
+import BannedPlayersRoute from "./routes/BannedPlayersRoute.tsx";
+import AccountRoute from "./routes/AccountRoute.tsx";
 
 function createRouter(){
     return createBrowserRouter([
@@ -81,6 +83,14 @@ function createRouter(){
                 {
                     path:"/roles/:id",
                     element: <RoleConfigRoute/>
+                },
+                {
+                    path:"/bans",
+                    element: <BannedPlayersRoute/>
+                },
+                {
+                    path: "/account",
+                    element: <AccountRoute/>
                 },
                 {
                     path:"*",

@@ -35,6 +35,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("org.apache.sshd:sshd-core:2.17.1")
     implementation("org.apache.sshd:sshd-sftp:2.17.1")
+    implementation("net.i2p.crypto:eddsa:0.3.0")
     annotationProcessor("org.projectlombok:lombok")
 }
 

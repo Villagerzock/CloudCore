@@ -6,6 +6,14 @@ import styles from "./TemplateListRoute.module.css";
 import {useNodePermissions} from "../hooks/useNodePermissions.ts";
 import {useI18n} from "../lib/i18n.ts";
 import Button from "../components/Button.tsx";
+import Dropdown from "../components/Dropdown.tsx";
+
+const softwareOptions = [
+    {value: "paper", label: "Paper"},
+    {value: "folia", label: "Folia"},
+    {value: "vanilla", label: "Vanilla"},
+    {value: "fabric", label: "Fabric"}
+];
 
 function TemplateListRoute(){
     const [templates, setTemplates] = useState<ServerTemplate[]>([]);
@@ -20,6 +28,16 @@ function TemplateListRoute(){
     const [error, setError] = useState<string | null>(null);
     const permissions = useNodePermissions();
     const {t} = useI18n();
+    const worldTypeOptions = [
+        {value: "default", label: t("template.world.default")},
+        {value: "superflat", label: t("template.world.superflat")}
+    ];
+    const superflatTypeOptions = [
+        {value: "default", label: t("template.superflat.default")},
+        {value: "the_void", label: t("template.superflat.the_void")},
+        {value: "redstone_ready", label: t("template.superflat.redstone_ready")},
+        {value: "water_world", label: t("template.superflat.water_world")}
+    ];
 
     async function load() {
         setTemplates(await getServerTemplates());
@@ -67,12 +85,7 @@ function TemplateListRoute(){
                         placeholder={t("field.name")}
                         required
                     />
-                    <select value={software} onChange={event => setSoftware(event.target.value)}>
-                        <option value="paper">Paper</option>
-                        <option value="folia">Folia</option>
-                        <option value="vanilla">Vanilla</option>
-                        <option value="fabric">Fabric</option>
-                    </select>
+                    <Dropdown id="template-software" value={software} options={softwareOptions} onChange={setSoftware}/>
                     <input
                         value={version}
                         onChange={event => setVersion(event.target.value)}
@@ -85,17 +98,14 @@ function TemplateListRoute(){
                         placeholder={t("field.memory")}
                         required
                     />
-                    <select value={worldType} onChange={event => setWorldType(event.target.value)}>
-                        <option value="default">{t("template.world.default")}</option>
-                        <option value="superflat">{t("template.world.superflat")}</option>
-                    </select>
+                    <Dropdown id="template-world-type" value={worldType} options={worldTypeOptions} onChange={setWorldType}/>
                     {worldType === "superflat" && (
-                        <select value={superflatType} onChange={event => setSuperflatType(event.target.value)}>
-                            <option value="default">{t("template.superflat.default")}</option>
-                            <option value="the_void">{t("template.superflat.the_void")}</option>
-                            <option value="redstone_ready">{t("template.superflat.redstone_ready")}</option>
-                            <option value="water_world">{t("template.superflat.water_world")}</option>
-                        </select>
+                        <Dropdown
+                            id="template-superflat-type"
+                            value={superflatType}
+                            options={superflatTypeOptions}
+                            onChange={setSuperflatType}
+                        />
                     )}
                     <input
                         value={seed}

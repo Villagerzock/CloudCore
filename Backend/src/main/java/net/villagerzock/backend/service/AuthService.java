@@ -7,6 +7,11 @@ import net.villagerzock.backend.entity.AuthToken;
 import net.villagerzock.backend.entity.UserAccount;
 import net.villagerzock.backend.repository.AuthTokenRepository;
 import net.villagerzock.backend.repository.UserAccountRepository;
+import org.apache.sshd.common.config.keys.AuthorizedKeyEntry;
+import org.apache.sshd.common.config.keys.KeyUtils;
+import org.apache.sshd.common.config.keys.PublicKeyEntryResolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,16 +22,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class AuthService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     private static final Duration TOKEN_LIFETIME = Duration.ofDays(30);
 
     private final UserAccountRepository users;
@@ -113,5 +117,43 @@ public class AuthService {
 
     public Optional<UserAccount> findByUsername(String username){
         return users.findByUsernameIgnoreCase(username.trim());
+    }
+    @Transactional(readOnly = true)
+    public boolean checkSshKey(String username, PublicKey incomingKey) {
+        Optional<UserAccount> user = users.findByUsernameIgnoreCase(username);
+        if (user.isEmpty() || !user.get().isEnabled()) {
+            LOGGER.warn("Rejected SSH key for unknown or disabled user '{}'", username);
+            return false;
+        }
+
+        boolean result = user.get().getSshKeys().stream()
+                .anyMatch(storedKey -> matchesAuthorizedKey(storedKey, incomingKey));
+        if (!result) {
+            LOGGER.warn(
+                    "No stored SSH key matched for user '{}' and incoming {} key fingerprint {}",
+                    username,
+                    incomingKey.getAlgorithm(),
+                    KeyUtils.getFingerPrint(incomingKey));
+        }
+        return result;
+    }
+
+    private boolean matchesAuthorizedKey(String storedAuthorizedKey, PublicKey incomingKey) {
+        if (storedAuthorizedKey == null || incomingKey == null) {
+            return false;
+        }
+
+        try {
+            AuthorizedKeyEntry entry = AuthorizedKeyEntry.parseAuthorizedKeyEntry(storedAuthorizedKey);
+            if (entry == null) {
+                return false;
+            }
+
+            PublicKey storedKey = entry.resolvePublicKey(null, PublicKeyEntryResolver.FAILING);
+            return KeyUtils.compareKeys(storedKey, incomingKey);
+        } catch (Exception exception) {
+            LOGGER.warn("Failed to parse stored SSH key '{}': {}", storedAuthorizedKey, exception.getMessage());
+            return false;
+        }
     }
 }

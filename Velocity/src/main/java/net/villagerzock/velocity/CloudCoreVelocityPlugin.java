@@ -25,6 +25,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.villagerzock.velocity.config.CloudCoreConfiguration;
+import net.villagerzock.velocity.dto.BannedPlayerDto;
+import net.villagerzock.velocity.service.BanService;
 import net.villagerzock.velocity.service.MaintenanceService;
 import net.villagerzock.velocity.service.MatchmakingService;
 import net.villagerzock.velocity.service.MetricCollectionService;
@@ -34,6 +36,10 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +53,15 @@ import static com.velocitypowered.api.event.player.KickedFromServerEvent.*;
         authors = {"Villagerzock"}
 )
 public class CloudCoreVelocityPlugin {
+    private static final String DEFAULT_BAN_MESSAGE = """
+            <red>You are banned from this network.</red>
+            <gray>Player:</gray> <white>%name%</white>
+            <gray>Reason:</gray> <white>%reason%</white>
+            <gray>Release:</gray> <white>%release_date%</white>
+            <gray>Time left:</gray> <white>%time_left%</white>
+            """;
+    private static final DateTimeFormatter BAN_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(ZoneId.systemDefault());
 
     public static CloudCoreVelocityPlugin INSTANCE;
 
@@ -355,6 +370,71 @@ public class CloudCoreVelocityPlugin {
         return value == null || value.isBlank() ? fallback : value;
     }
 
+    private boolean disconnectIfBanned(Player player, BanService banService, CloudCoreConfiguration configuration) {
+        return banService.getActiveBan(player)
+                .map(ban -> {
+                    player.disconnect(banMessage(ban, configuration));
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    private Component banMessage(BannedPlayerDto ban, CloudCoreConfiguration configuration) {
+        String template = configuration.getBanMessage();
+        if (template == null || template.isBlank()) {
+            template = DEFAULT_BAN_MESSAGE;
+        }
+        return miniMessage.deserialize(replaceBanPlaceholders(template, ban));
+    }
+
+    private String replaceBanPlaceholders(String template, BannedPlayerDto ban) {
+        String name = emptyFallback(ban.name(), ban.uuid().toString());
+        String releaseDate = ban.expiresAt() == null ? "Permanent" : BAN_DATE_FORMAT.format(ban.expiresAt());
+        String timeLeft = ban.expiresAt() == null ? "Permanent" : formatDuration(Duration.between(Instant.now(), ban.expiresAt()));
+        String banDuration = ban.bannedAt() == null || ban.expiresAt() == null
+                ? "Permanent"
+                : formatDuration(Duration.between(ban.bannedAt(), ban.expiresAt()));
+        return template
+                .replace("%reason%", emptyFallback(ban.reason(), "No reason provided"))
+                .replace("%name%", name)
+                .replace("%release_date%", releaseDate)
+                .replace("%time_left%", timeLeft)
+                .replace("%time%", banDuration)
+                .replace("%uuid%", ban.uuid().toString());
+    }
+
+    private String formatDuration(Duration duration) {
+        if (duration.isNegative() || duration.isZero()) {
+            return "0s";
+        }
+        long seconds = duration.getSeconds();
+        long days = seconds / 86_400;
+        seconds %= 86_400;
+        long hours = seconds / 3_600;
+        seconds %= 3_600;
+        long minutes = seconds / 60;
+        seconds %= 60;
+
+        StringBuilder result = new StringBuilder();
+        appendDurationPart(result, days, "d");
+        appendDurationPart(result, hours, "h");
+        appendDurationPart(result, minutes, "m");
+        if (result.isEmpty()) {
+            appendDurationPart(result, seconds, "s");
+        }
+        return result.toString();
+    }
+
+    private void appendDurationPart(StringBuilder result, long value, String suffix) {
+        if (value <= 0) {
+            return;
+        }
+        if (!result.isEmpty()) {
+            result.append(' ');
+        }
+        result.append(value).append(suffix);
+    }
+
     @Subscribe
     public void onChooseInitialServer(PlayerChooseInitialServerEvent event) {
         if (isSpringStarting()) {
@@ -363,8 +443,13 @@ public class CloudCoreVelocityPlugin {
         }
 
         ServerMangementService serverMangementService = application.getBean(ServerMangementService.class);
+        BanService banService = application.getBean(BanService.class);
         MaintenanceService maintenanceService = application.getBean(MaintenanceService.class);
         CloudCoreConfiguration configuration = application.getBean(CloudCoreConfiguration.class);
+
+        if (disconnectIfBanned(event.getPlayer(), banService, configuration)) {
+            return;
+        }
 
         if (maintenanceService.isActive() && !maintenanceService.hasPlayer(event.getPlayer())) {
             event.getPlayer().disconnect(Component.text("This Network is currently in Maintenance", NamedTextColor.RED));
@@ -393,8 +478,15 @@ public class CloudCoreVelocityPlugin {
         }
 
         ServerMangementService serverManagementService = application.getBean(ServerMangementService.class);
+        BanService banService = application.getBean(BanService.class);
         MaintenanceService maintenanceService = application.getBean(MaintenanceService.class);
         CloudCoreConfiguration configuration = application.getBean(CloudCoreConfiguration.class);
+
+        var activeBan = banService.getActiveBan(event.getPlayer());
+        if (activeBan.isPresent()) {
+            event.setResult(DisconnectPlayer.create(banMessage(activeBan.get(), configuration)));
+            return;
+        }
 
         if (maintenanceService.isActive() && !maintenanceService.hasPlayer(event.getPlayer())) {
             event.setResult(DisconnectPlayer.create(

@@ -3,6 +3,8 @@ package net.villagerzock.backend.service;
 import net.villagerzock.backend.dto.ChartPointDto;
 import net.villagerzock.backend.dto.CommandRequest;
 import net.villagerzock.backend.dto.AddMaintenancePlayerRequest;
+import net.villagerzock.backend.dto.BannedPlayerDto;
+import net.villagerzock.backend.dto.CreateBannedPlayerRequest;
 import net.villagerzock.backend.dto.CreateTemplateRequest;
 import net.villagerzock.backend.dto.FileSystemDelegatorResponse;
 import net.villagerzock.backend.dto.NetworkPointDto;
@@ -15,6 +17,7 @@ import net.villagerzock.backend.dto.SaveTemplateFileRequest;
 import net.villagerzock.backend.dto.ServerDto;
 import net.villagerzock.backend.dto.ServerTemplateDto;
 import net.villagerzock.backend.dto.TemplatePathRequest;
+import net.villagerzock.backend.dto.UpdateBannedPlayerRequest;
 import net.villagerzock.backend.dto.UploadTemplateFileRequest;
 import net.villagerzock.backend.repository.CloudCoreNodeRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +45,8 @@ public class NodeHandshakeClient {
     private static final ParameterizedTypeReference<List<ChartPointDto>> CHART_LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<NetworkPointDto>> NETWORK_LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<MatchmakingConfigurationDto>> MATCHMAKING_LIST =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<BannedPlayerDto>> BANNED_PLAYER_LIST =
             new ParameterizedTypeReference<>() {};
 
     private final CloudCoreNodeRepository nodes;
@@ -187,6 +192,45 @@ public class NodeHandshakeClient {
                     .uri("/maintenance/players/{uuid}", uuid)
                     .retrieve()
                     .body(MaintenanceStatusDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public List<BannedPlayerDto> getBannedPlayers(long nodeId) {
+        return get(nodeId, "/bans", BANNED_PLAYER_LIST);
+    }
+
+    public BannedPlayerDto createBan(long nodeId, CreateBannedPlayerRequest request) {
+        try {
+            return client(nodeId).post()
+                    .uri("/bans")
+                    .body(request)
+                    .retrieve()
+                    .body(BannedPlayerDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public BannedPlayerDto updateBan(long nodeId, String uuid, UpdateBannedPlayerRequest request) {
+        try {
+            return client(nodeId).method(HttpMethod.PATCH)
+                    .uri("/bans/{uuid}", uuid)
+                    .body(request)
+                    .retrieve()
+                    .body(BannedPlayerDto.class);
+        } catch (RestClientException exception) {
+            throw unavailable(nodeId, exception);
+        }
+    }
+
+    public void deleteBan(long nodeId, String uuid) {
+        try {
+            client(nodeId).method(HttpMethod.DELETE)
+                    .uri("/bans/{uuid}", uuid)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (RestClientException exception) {
             throw unavailable(nodeId, exception);
         }

@@ -35,8 +35,8 @@ function ServerTemplateCard({ name, server_software, version, canOpen, canLaunch
     return (
         <div className={`${styles.card} ${!canOpen ? styles.disabled : ""}`} onClick={open}>
             <h3>{name}</h3>
-            <span>{t("field.software")}: {server_software}</span><br/>
-            <span>{t("field.version")}: {version}</span><br/>
+            <p>{t("field.software")}: {server_software}</p>
+            <p>{t("field.version")}: {version}</p>
             {canLaunch && (
                 <div className={styles.buttonList}>
                     <ImageButton onClick={startSingleton} tooltip={t("action.launch_singleton")}><FaRegCirclePlay/></ImageButton>

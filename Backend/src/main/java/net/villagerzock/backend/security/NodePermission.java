@@ -22,6 +22,8 @@ public enum NodePermission {
     ROLES_ADD(), // Allows you to create new Roles, cannot put role above you own if the user is not node owner, also cannot give any permission the user doesnt have without being node owner. Also allows user to edit existing roles
     ROLES_MOVE(), // Allows the user to change the order of the roles, has to follow same principle with not being able to move it above his own and not bein able to move his own role or any higher roles
     TEMPLATES_CREATE(),
+    BANNED_PLAYERS_ADD(),
+    BANNED_PLAYERS_EDIT(),
     // More to come
 
 

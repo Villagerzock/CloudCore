@@ -23,6 +23,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+      - "2222:2222"
     depends_on:
       mariadb:
         condition: service_healthy
